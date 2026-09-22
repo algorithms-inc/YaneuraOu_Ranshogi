@@ -248,3 +248,15 @@ FakesAssemblies/
 GeneratedArtifacts/
 _Pvt_Extensions/
 ModelManifest.xml
+
+*.bin
+*ranshogi*
+# 生成物でないものは *ranshogi* の対象外にする
+!source/mobile/ranshogi_api.h
+!source/mobile/ranshogi_api.cpp
+!source/mobile/unity/RanshogiEngine.cs
+!RANSHOGI.md
+*.db
+*YaneuraOu-by-gcc
+*.DS_Store
+*.sql

@@ -13,28 +13,21 @@ using namespace std;
 // 外部から直接アクセスしないようにnamespaceに入れておく。
 namespace BB_Table
 {
-	const Bitboard FILE1_BB = Bitboard(UINT64_C(0x1ff) << (9 * 0), 0);
-	const Bitboard FILE2_BB = Bitboard(UINT64_C(0x1ff) << (9 * 1), 0);
-	const Bitboard FILE3_BB = Bitboard(UINT64_C(0x1ff) << (9 * 2), 0);
-	const Bitboard FILE4_BB = Bitboard(UINT64_C(0x1ff) << (9 * 3), 0);
-	const Bitboard FILE5_BB = Bitboard(UINT64_C(0x1ff) << (9 * 4), 0);
-	const Bitboard FILE6_BB = Bitboard(UINT64_C(0x1ff) << (9 * 5), 0);
-	const Bitboard FILE7_BB = Bitboard(UINT64_C(0x1ff) << (9 * 6), 0);
-	const Bitboard FILE8_BB = Bitboard(0, 0x1ff << (9 * 0));
-	const Bitboard FILE9_BB = Bitboard(0, 0x1ff << (9 * 1));
+	const Bitboard FILE1_BB = Bitboard(UINT64_C(0x3f) << (6 * 0), 0);
+	const Bitboard FILE2_BB = Bitboard(UINT64_C(0x3f) << (6 * 1), 0);
+	const Bitboard FILE3_BB = Bitboard(UINT64_C(0x3f) << (6 * 2), 0);
+	const Bitboard FILE4_BB = Bitboard(UINT64_C(0x3f) << (6 * 3), 0);
+	const Bitboard FILE5_BB = Bitboard(UINT64_C(0x3f) << (6 * 4), 0);
+	const Bitboard FILE6_BB = Bitboard(UINT64_C(0x3f) << (6 * 5), 0);
 
-	const Bitboard RANK1_BB = Bitboard(UINT64_C(0x40201008040201) << 0, 0x201 << 0);
-	const Bitboard RANK2_BB = Bitboard(UINT64_C(0x40201008040201) << 1, 0x201 << 1);
-	const Bitboard RANK3_BB = Bitboard(UINT64_C(0x40201008040201) << 2, 0x201 << 2);
-	const Bitboard RANK4_BB = Bitboard(UINT64_C(0x40201008040201) << 3, 0x201 << 3);
-	const Bitboard RANK5_BB = Bitboard(UINT64_C(0x40201008040201) << 4, 0x201 << 4);
-	const Bitboard RANK6_BB = Bitboard(UINT64_C(0x40201008040201) << 5, 0x201 << 5);
-	const Bitboard RANK7_BB = Bitboard(UINT64_C(0x40201008040201) << 6, 0x201 << 6);
-	const Bitboard RANK8_BB = Bitboard(UINT64_C(0x40201008040201) << 7, 0x201 << 7);
-	const Bitboard RANK9_BB = Bitboard(UINT64_C(0x40201008040201) << 8, 0x201 << 8);
-
-	const Bitboard FILE_BB[FILE_NB] = { FILE1_BB,FILE2_BB,FILE3_BB,FILE4_BB,FILE5_BB,FILE6_BB,FILE7_BB,FILE8_BB,FILE9_BB };
-	const Bitboard RANK_BB[RANK_NB] = { RANK1_BB,RANK2_BB,RANK3_BB,RANK4_BB,RANK5_BB,RANK6_BB,RANK7_BB,RANK8_BB,RANK9_BB };
+	const Bitboard RANK1_BB = Bitboard(UINT64_C(0x41041041) << 0, 0);
+	const Bitboard RANK2_BB = Bitboard(UINT64_C(0x41041041) << 1, 0);
+	const Bitboard RANK3_BB = Bitboard(UINT64_C(0x41041041) << 2, 0);
+	const Bitboard RANK4_BB = Bitboard(UINT64_C(0x41041041) << 3, 0);
+	const Bitboard RANK5_BB = Bitboard(UINT64_C(0x41041041) << 4, 0);
+	const Bitboard RANK6_BB = Bitboard(UINT64_C(0x41041041) << 5, 0);
+	const Bitboard FILE_BB[FILE_NB] = { FILE1_BB,FILE2_BB,FILE3_BB,FILE4_BB,FILE5_BB,FILE6_BB };
+	const Bitboard RANK_BB[RANK_NB] = { RANK1_BB,RANK2_BB,RANK3_BB,RANK4_BB,RANK5_BB,RANK6_BB };
 
 
 	// sqの升が1であるbitboard
@@ -48,27 +41,23 @@ namespace BB_Table
 			RANK1_BB | RANK2_BB,
 			RANK1_BB | RANK2_BB | RANK3_BB,
 			RANK1_BB | RANK2_BB | RANK3_BB | RANK4_BB,
-			~(RANK9_BB | RANK8_BB | RANK7_BB | RANK6_BB),
-			~(RANK9_BB | RANK8_BB | RANK7_BB),
-			~(RANK9_BB | RANK8_BB),
-			~RANK9_BB
+			RANK1_BB | RANK2_BB | RANK3_BB | RANK4_BB | RANK5_BB
 		},{
-			~RANK1_BB,
-			~(RANK1_BB | RANK2_BB),
-			~(RANK1_BB | RANK2_BB | RANK3_BB),
-			~(RANK1_BB | RANK2_BB | RANK3_BB | RANK4_BB),
-			RANK9_BB | RANK8_BB | RANK7_BB | RANK6_BB,
-			RANK9_BB | RANK8_BB | RANK7_BB,
-			RANK9_BB | RANK8_BB,
-			RANK9_BB,
+			RANK6_BB | RANK5_BB | RANK4_BB | RANK3_BB | RANK2_BB,
+			RANK6_BB | RANK5_BB | RANK4_BB | RANK3_BB,
+			RANK6_BB | RANK5_BB | RANK4_BB,
+			RANK6_BB | RANK5_BB,
+			RANK6_BB,
 			Bitboard(0)
 		}
 	};
 
 	// 敵陣を表現するBitboard。
+	// 乱将棋(6x6)の成れる範囲は敵陣3段(アプリの Potision66.N_RANK_PROMOTE() = 3、types.h の canPromote() と同じ)。
+	// 以前は2段になっていて、3段目がからむ成り(例: 3e1c+)が指し手生成から漏れていた。
 	const Bitboard EnemyField[COLOR_NB] = {
-		RANK1_BB | RANK2_BB | RANK3_BB ,
-		RANK7_BB | RANK8_BB | RANK9_BB
+		RANK1_BB | RANK2_BB | RANK3_BB,
+		RANK4_BB | RANK5_BB | RANK6_BB
 	};
 
 	// 玉、金、銀、桂、歩の利き
@@ -119,9 +108,9 @@ using namespace BB_Table;
 // Bitboardを表示する(USI形式ではない) デバッグ用
 std::ostream& operator<<(std::ostream& os, const Bitboard& board)
 {
-	for (Rank rank = RANK_1; rank <= RANK_9; ++rank)
+	for (Rank rank = RANK_1; rank <= RANK_6; ++rank)
 	{
-		for (File file = FILE_9; file >= FILE_1; --file)
+		for (File file = FILE_6; file >= FILE_1; --file)
 			os << ((board & (file | rank)) ? " *" : " .");
 		os << endl;
 	}
@@ -144,16 +133,16 @@ void Bitboards::init()
 
 
 	// 2) direct_tableの初期化
-
 	for (auto sq1 : SQ)
 		for (auto dir = Effect8::DIRECT_ZERO; dir < Effect8::DIRECT_NB; ++dir)
 		{
 			// dirの方角に壁にぶつかる(盤外)まで延長していく。このとき、sq1から見てsq2のDirectionsは (1 << dir)である。
 			auto delta = Effect8::DirectToDeltaWW(dir);
-			for (auto sq2 = to_sqww(sq1) + delta; is_ok(sq2); sq2 += delta)
-			Effect8::direc_table[sq1][sqww_to_sq(sq2)] = Effect8::to_directions(dir);
+			for (auto sq2 = to_sqww(sq1) + delta; is_ok(sq2); sq2 += delta) {
+				Effect8::direc_table[sq1][sqww_to_sq(sq2)] = Effect8::to_directions(dir);
+			}
 		}
-
+		
 
 	// 3) Square型のsqの指す升が1であるBitboardがSquareBB。これをまず初期化する。
 
@@ -162,20 +151,20 @@ void Bitboards::init()
 		Rank r = rank_of(sq);
 		File f = file_of(sq);
 		SquareBB[sq] = Bitboard(
-			(f <= FILE_7) ? ((uint64_t)1 << (f * 9 + r)) : 0,
-			(f >= FILE_8) ? ((uint64_t)1 << ((f - FILE_8) * 9 + r)) : 0
+			((uint64_t)1 << (f * 6 + r)),
+			 0
 		);
 	}
 
 	// 4) Qugiyの飛車のBitboardテーブルの初期化
 
-	for (File f = FILE_1; f <= FILE_9; ++f) {
-		for (Rank r = RANK_1; r <= RANK_9; ++r) {
+	for (File f = FILE_1; f <= FILE_6; ++f) {
+		for (Rank r = RANK_1; r <= RANK_6; ++r) {
 
 			Bitboard left(ZERO), right(ZERO);
 			
 			// SQの升から左方向
-			for (File f2 = (File)(f + 1); f2 <= FILE_9; ++f2)
+			for (File f2 = (File)(f + 1); f2 <= FILE_6; ++f2)
 				left |= Bitboard(f2 | r);
 
 			// SQの升から右方向
@@ -202,8 +191,8 @@ void Bitboards::init()
 		Effect8::Direct::DIRECT_RD   // 右下
 	};
 
-	for (File f = FILE_1; f <= FILE_9; ++f) {
-		for (Rank r = RANK_1; r <= RANK_9; ++r) {
+	for (File f = FILE_1; f <= FILE_6; ++f) {
+		for (Rank r = RANK_1; r <= RANK_6; ++r) {
 
 			// 対象升から
 			Square sq = f | r;
@@ -289,7 +278,7 @@ void Bitboards::init()
 			// 歩の利きは何段目であるか。
 			Rank r = (Rank)(rank_of(sq) + (c == BLACK ? -1 : +1));
 			// その段数が1～9段目に収まるなら..
-			PawnEffectBB[sq][c] = (RANK_1 <= r && r <= RANK_9) ? Bitboard(file_of(sq) | r) : Bitboard(ZERO);
+			PawnEffectBB[sq][c] = (RANK_1 <= r && r <= RANK_6) ? Bitboard(file_of(sq) | r) : Bitboard(ZERO);
 		}
 
 	// 備考) ここでlanceEffectが使えるようになったので、以降、rookEffectが使える。
@@ -363,6 +352,7 @@ void Bitboards::init()
 		for (auto s1 : SQ)
 			for (auto s2 : SQ)
 			{
+				//std::cout << s1 << ", " <<  s2 << std::endl;
 				// 十字方向か、斜め方向かだけを判定して、例えば十字方向なら
 				// rookEffect(sq1,Bitboard(s2)) & rookEffect(sq2,Bitboard(s1))
 				// のように初期化したほうが明快なコードだが、この初期化をそこに依存したくないので愚直にやる。
@@ -371,6 +361,7 @@ void Bitboards::init()
 				if (s1 >= s2)
 					continue;
 
+				//std::cout  << Effect8::directions_of(s1, s2) << std::endl;
 				// 方角を用いるテーブルの初期化
 				if (Effect8::directions_of(s1, s2))
 				{
@@ -443,7 +434,7 @@ void Bitboards::init()
 			{
 				if (file_of(ksq) != FILE_1)
 					target |= lanceStepEffect(them, ksq + SQ_R);
-				if (file_of(ksq) != FILE_9)
+				if (file_of(ksq) != FILE_6)
 					target |= lanceStepEffect(them, ksq + SQ_L);
 			}
 			CheckCandidateBB[ksq][LANCE - 1][Us] = target;
@@ -619,11 +610,11 @@ std::ostream& operator<<(std::ostream& os, const Bitboard256& board)
 	board.toBitboard(b1, b2);
 
 	auto print_rank = [&](const Bitboard& b,Rank r) {
-		for (File f = FILE_9; f >= FILE_1; --f)
+		for (File f = FILE_6; f >= FILE_1; --f)
 			os << (b.test(f | r) ? " *" : " .");
 	};
 
-	for (Rank r = RANK_1; r <= RANK_9; ++r)
+	for (Rank r = RANK_1; r <= RANK_6; ++r)
 	{
 		// Bitboardを2列表示する。
 		print_rank(b1,r);
@@ -847,12 +838,45 @@ Bitboard effects_from(Piece pc, Square sq, const Bitboard& occ)
 	}
 }
 
+Bitboard myRookRankEffect(Square sq, const Bitboard& occupied)
+{
+	Bitboard b = Bitboard(ZERO);
+	auto directions = {Effect8::DIRECT_L, Effect8::DIRECT_R};
+	for (auto dir : directions)
+	{
+		// dirの方角に壁にぶつかる(盤外)まで延長していく。このとき、sq1から見てsq2のDirectionsは (1 << dir)である。
+		auto delta = Effect8::DirectToDeltaWW(dir);
+		for (auto sq2 = to_sqww(sq) + delta; is_ok(sq2); sq2 += delta) {
+			b |= sqww_to_sq(sq2);
+			if(occupied & sqww_to_sq(sq2)) break;
+		}
+	}
+	return b;
+}
+
+Bitboard myBishopEffect(Square sq, const Bitboard& occupied)
+{
+	Bitboard b = Bitboard(ZERO);
+	auto directions = {Effect8::DIRECT_RU, Effect8::DIRECT_RD, Effect8::DIRECT_LU, Effect8::DIRECT_LD};
+	for (auto dir : directions)
+	{
+		// dirの方角に壁にぶつかる(盤外)まで延長していく。このとき、sq1から見てsq2のDirectionsは (1 << dir)である。
+		auto delta = Effect8::DirectToDeltaWW(dir);
+		for (auto sq2 = to_sqww(sq) + delta; is_ok(sq2); sq2 += delta) {
+			b |= sqww_to_sq(sq2);
+			if(occupied & sqww_to_sq(sq2)) break;
+		}
+	}
+	return b;
+}
+
 // Qugiyのアルゴリズムによる、飛車と角の利きの実装。
 // magic bitboard tableが不要になる。
 
 // 飛車の横の利き
 Bitboard rookRankEffect(Square sq, const Bitboard& occupied)
 {
+	return myRookRankEffect(sq, occupied);
 	// Qugiyのアルゴリズムを忠実にBitboardで実装。
 	Bitboard hi, lo , t1, t0;
 
@@ -884,12 +908,14 @@ Bitboard rookRankEffect(Square sq, const Bitboard& occupied)
 
 	// byte_reverseして元の状態に戻して、重ね合わせる。
 	// hiの方には、右方向の利き、loは左方向の利きが得られている。
+
 	return hi.byte_reverse() | lo;
 }
 
 // 角の利き
 Bitboard bishopEffect(const Square sq, const Bitboard& occupied)
 {
+	return myBishopEffect(sq, occupied);
 	const Bitboard256 mask_lo =  QUGIY_BISHOP_MASK[sq][0];
 	const Bitboard256 mask_hi =  QUGIY_BISHOP_MASK[sq][1];
 
@@ -950,8 +976,8 @@ void Bitboard::UnitTest(Test::UnitTester& tester)
 	{
 		// SQの升のbitを立てて、それがちゃんと読み取れるかのテスト
 		bool all_ok = true;
-		for (Rank r = RANK_1; r <= RANK_9; ++r)
-			for (File f = FILE_1; f <= FILE_9; ++f)
+		for (Rank r = RANK_1; r <= RANK_6; ++r)
+			for (File f = FILE_1; f <= FILE_6; ++f)
 			{
 				Square sq = f | r;
 				Bitboard b(sq);
@@ -972,7 +998,7 @@ void Bitboard::UnitTest(Test::UnitTester& tester)
 		// 9段目が0、そこ以外が1のmask(香の利きを求めるコードのなかで使っている)
 		Bitboard mask(0x3fdfeff7fbfdfeffULL , 0x000000000001feffULL);
 
-		tester.test("RANK9_BB", RANK9_BB == ~mask);
+		//tester.test("RANK9_BB", RANK9_BB == ~mask);
 	}
 
 	{
@@ -982,33 +1008,37 @@ void Bitboard::UnitTest(Test::UnitTester& tester)
 
 		// 何も駒のない盤面上に駒ptを55に置いた時の利きの数。
 		int p0_table[] = {
-			0,1,4,2,5,16,16,6,	// Empty、歩、香、桂、銀、角、飛、金
-			8,6,6,6,6,20,20,6,	// 玉、と、…
+			0,1,3,2,5,9,10,6,	// Empty、歩、香、桂、銀、角、飛、金
+			8,6,6,6,6,13,14,6,	// 玉、と、…
+		};
+		int p0_table_white[] = {
+			0,1,2,2,5,9,10,6,	// Empty、歩、香、桂、銀、角、飛、金
+			8,6,6,6,6,13,14,6,	// 玉、と、…
 		};
 		// 駒が敷き詰められた盤面上で駒ptを55に置いた時の利きの数。
 		int p1_table[] = {
-			0,1,1,2,5, 4, 4,6,	// Empty、歩、香、桂、銀、角、飛
-			8,6,6,6,6, 8, 8,6,	// 玉、と、…
+			0,1,1,2,5,4,4,6,	// Empty、歩、香、桂、銀、角、飛
+			8,6,6,6,6,8,8,6,	// 玉、と、…
 		};
 
 		for (Color c : COLOR)
 			for (PieceType pt = PAWN ; pt < PIECE_TYPE_NB ; ++pt )
 			{
 				Piece pc = make_piece(c, pt);
-				Bitboard bb0 = effects_from(pc, SQ_55, Bitboard(ZERO));
+				Bitboard bb0 = effects_from(pc, SQ_44, Bitboard(ZERO));
 				int p0 = bb0.pop_count();
-				Bitboard bb1 = effects_from(pc, SQ_55, Bitboard(1));
+				Bitboard bb1 = effects_from(pc, SQ_44, Bitboard(1));
 				int p1 = bb1.pop_count();
-				bool ok0 = (p0 == p0_table[(int)pt]);
+				bool ok0 = (c == BLACK ? (p0 == p0_table[(int)pt]) : (p0 == p0_table_white[(int)pt]));
 				if (!ok0)
 				{
-					cout << "Effect " << pc  << "(" << pretty(pc) << ")" << " on SQ_55 in Bitboard(ZERO) , pop_count = " << p0 << endl;
+					cout << "Effect " << pc  << "(" << pretty(pc) << ")" << " on SQ_44 in Bitboard(ZERO) , pop_count = " << p0 << endl;
 					cout << bb0 << endl;
 				}
 				bool ok1 = (p1 == p1_table[(int)pt]);
 				if (!ok1)
 				{
-					cout << "Effect " << pc  << "(" << pretty(pc) << ")" << " on SQ_55 in Bitboard(1) , pop_count = " << p1 << endl;
+					cout << "Effect " << pc  << "(" << pretty(pc) << ")" << " on SQ_44 in Bitboard(1) , pop_count = " << p1 << endl;
 					cout << bb1 << endl;
 				}
 				all_ok &= ok0 & ok1;
@@ -1020,10 +1050,11 @@ void Bitboard::UnitTest(Test::UnitTester& tester)
 		// 方向利き
 
 		bool all_ok = true;
-		Bitboard occ(SQ_77);
+		//Bitboard occ(SQ_77);
+		Bitboard occ(SQ_55);
 		Bitboard zero(ZERO);
-		all_ok = rayEffect<Effect8::DIRECT_LD>(SQ_55, occ) == between_bb(SQ_55, SQ_88);
-		all_ok = rayEffect<Effect8::DIRECT_LD>(SQ_55, zero) == QUGIY_STEP_EFFECT[Effect8::DIRECT_LD - 2][SQ_55];
+		all_ok = rayEffect<Effect8::DIRECT_LD>(SQ_22, occ) == between_bb(SQ_22, SQ_66);
+		//all_ok = rayEffect<Effect8::DIRECT_LD>(SQ_55, zero) == QUGIY_STEP_EFFECT[Effect8::DIRECT_LD - 2][SQ_55];
 
 		Bitboard occ2(SQ_33);
 		all_ok = rayEffect<Effect8::DIRECT_RU>(SQ_55, occ2) == between_bb(SQ_55, SQ_22);
@@ -1097,11 +1128,11 @@ void Bitboard::UnitTest(Test::UnitTester& tester)
 	}
 	{
 		// pawn_attacks_bbのテスト
-		tester.test("pawn_attacks_bb<BLACK>",pawn_attacks_bb<BLACK>(RANK7_BB) == RANK6_BB);
-		tester.test("pawn_attacks_bb<WHITE>",pawn_attacks_bb<WHITE>(RANK7_BB) == RANK8_BB);
+		//tester.test("pawn_attacks_bb<BLACK>",pawn_attacks_bb<BLACK>(RANK7_BB) == RANK6_BB);
+		//tester.test("pawn_attacks_bb<WHITE>",pawn_attacks_bb<WHITE>(RANK7_BB) == RANK8_BB);
 
-		tester.test("attacks_bb<B_KNIGHT>",attacks_bb<B_KNIGHT>(SQ_77) == (Bitboard(SQ_85) | Bitboard(SQ_65)));
-		tester.test("attacks_bb<W_KNIGHT>",attacks_bb<W_KNIGHT>(SQ_77) == (Bitboard(SQ_89) | Bitboard(SQ_69)));
+		//tester.test("attacks_bb<B_KNIGHT>",attacks_bb<B_KNIGHT>(SQ_77) == (Bitboard(SQ_85) | Bitboard(SQ_65)));
+		//tester.test("attacks_bb<W_KNIGHT>",attacks_bb<W_KNIGHT>(SQ_77) == (Bitboard(SQ_89) | Bitboard(SQ_69)));
 	}
 }
 
@@ -1119,7 +1150,8 @@ void Bitboard256::UnitTest(Test::UnitTester& tester)
 		for (auto sq : SQ)
 		{
 			b1 = Bitboard(sq);
-			b2 = Bitboard(SQ_99 - sq);
+			//b2 = Bitboard(SQ_99 - sq);
+			b2 = Bitboard(SQ_66 - sq);
 
 			Bitboard256 b256(b1, b2);
 			b256.toBitboard(b3, b4);

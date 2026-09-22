@@ -110,7 +110,7 @@ namespace Effect8
 
     // sqがSQ_32(p[1]から見るとSQ_92の左の升)に来るように正規化する。(SQ_22だと後半が64回以上のシフトが必要になる)
     auto t = uint32_t((sq < SQ_32) ? (b.p[0] << int(SQ_32 - sq)) :
-      ((b.p[0] >> int(sq - SQ_32)) | (b.p[1] << int(SQ_92 + SQ_L - sq)))); // p[1]のSQ_92の左の升は、p[0]のSQ_32相当。
+      ((b.p[0] >> int(sq - SQ_32)) | (b.p[1] << int(SQ_62 + SQ_L - sq)))); // p[1]のSQ_92の左の升は、p[0]のSQ_32相当。
 
                                                                               // PEXTで8近傍の状態を回収。
     return (Directions)PEXT32(t, 0b111000000101000000111000000000);
@@ -168,7 +168,7 @@ namespace Effect24
   {
     // sqがSQ_33に来るように正規化する。
     auto t = (sq < SQ_33) ? (b.p[0] << int(SQ_33 - sq)) :
-      ((b.p[0] >> int(sq - SQ_33)) | (b.p[1] << int(SQ_93 + SQ_L - sq))); // p[1]のSQ_93の左は、p[0]のSQ_33
+      ((b.p[0] >> int(sq - SQ_33)) | (b.p[1] << int(SQ_63 + SQ_L - sq))); // p[1]のSQ_93の左は、p[0]のSQ_33
 
     // PEXTで24近傍の状態を回収。
     return (Directions)PEXT64(t, 0b11111000011111000011011000011111000011111);
@@ -192,7 +192,7 @@ namespace LongEffect
     // 利きの数をそのまま表示。10以上あるところの利きの表示がおかしくなるので16進数表示にしておく。
     for (auto r : Rank())
     {
-      for (File f = FILE_9; f >= FILE_1; --f)
+      for (File f = FILE_6; f >= FILE_1; --f)
       {
         int e = uint8_t(board.e[f | r]);
         if (e < 16)
@@ -216,7 +216,7 @@ namespace LongEffect
   {
     for (auto r : Rank())
     {
-      for (File f = FILE_9; f >= FILE_1; --f)
+      for (File f = FILE_6; f >= FILE_1; --f)
       {
         auto e = board.le16[f | r];
         // 方角を表示。複数あるなら4個まで表示

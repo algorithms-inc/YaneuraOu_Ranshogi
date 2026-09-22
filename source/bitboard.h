@@ -87,10 +87,10 @@ struct alignas(16) Bitboard
 			// p[0]の63bit目は0
 
 #if defined (USE_SSE2)
-			m = _mm_set_epi64x(UINT64_C(0x000000000003FFFF), UINT64_C(0x7FFFFFFFFFFFFFFF));
+			m = _mm_set_epi64x(UINT64_C(0x0), UINT64_C(0xFFFFFFFFF));
 #else
-			p[0] = UINT64_C(0x7FFFFFFFFFFFFFFF);
-			p[1] = UINT64_C(0x000000000003FFFF);
+			p[0] = UINT64_C(0xfffffffff);
+			p[1] = UINT64_C(0);
 #endif
 		}
 	}
@@ -136,7 +136,7 @@ struct alignas(16) Bitboard
 	// 本ソースコードのように縦型Bitboardにおいては、香の利きを求めるのにBitboardの
 	// 片側のp[x]を調べるだけで済むので、ある升がどちらに属するかがわかれば香の利きは
 	// そちらを調べるだけで良いというAperyのアイデア。
-	constexpr static int part(Square sq) { return static_cast<int>(SQ_79 < sq); }
+	constexpr static int part(Square sq) { return 0; }
 
 	// --- operator
 
@@ -498,7 +498,7 @@ namespace BB_Table { extern const Bitboard ForwardRanksBB[COLOR_NB][RANK_NB]; }
 inline const Bitboard rank1_n_bb(Color US, const Rank r)
 {
 	ASSERT_LV2(is_ok(r));
-	return BB_Table::ForwardRanksBB[US][(US == BLACK ? r + 1 : 7 - r)];
+	return BB_Table::ForwardRanksBB[US][(US == BLACK ? r + 1 : 4 - r)];
 }
 
 // 敵陣を表現するBitboard。
@@ -573,7 +573,7 @@ template <Color C>
 inline Bitboard pawn_drop_mask(const Bitboard& pawns) {
 	// Quigy[WCSC31]の手法 : cf. https://www.apply.computer-shogi.org/wcsc31/appeal/Qugiy/appeal.pdf
 
-	const Bitboard left(0x4020100804020100ULL, 0x0000000000020100ULL);
+	const Bitboard left(0x820820820ULL, 0x0ULL);
 
 	// 9段目だけ1にしたbitboardから、歩の升を引き算すると、桁借りで上位bit(9段目)が0になる。これを敷衍するという考えかた。
 	Bitboard t = left - pawns;
@@ -599,12 +599,12 @@ inline Bitboard pawn_drop_mask(const Bitboard& pawns) {
 	if (C == BLACK)
 	{
 		// 2段目に移動させて、それを9段目まで敷衍させる。
-		t = (t & left) >> 7;
+		t = (t & left) >> 4;
 		return left ^ (left - t);
 	}
 	else {
 		// 1段目に移動させて、それを8段目まで敷衍させる。
-		t = (t & left) >> 8;
+		t = (t & left) >> 5;
 		return left.andnot(left - t);
 	}
 }
@@ -1020,10 +1020,23 @@ inline Bitboard dragonEffect(Square sq, const Bitboard& occupied)
 // 6方向しか使っていないので詰めてある。
 namespace BB_Table { extern Bitboard QUGIY_STEP_EFFECT[Effect8::DIRECT_NB - 2][SQ_NB_PLUS1]; }
 
+template <Effect8::Direct D>
+Bitboard myRayEffect(Square sq, const Bitboard& occupied) {
+	auto b = Bitboard(ZERO);
+	auto delta = Effect8::DirectToDeltaWW(D);
+	auto sq1 = to_sqww(sq) + delta;
+	for(; is_ok(sq1) && !(occupied & sqww_to_sq(sq1)); sq1 += delta) {
+		b |= sqww_to_sq(sq1);
+	}
+	b |= sqww_to_sq(sq1);
+	return b;
+}
+
 // 方向利き
 template <Effect8::Direct D>
 Bitboard rayEffect(Square sq, const Bitboard& occupied)
 {
+	return myRayEffect<D>(sq, occupied);
 	// DIRECT_Uはbyte_reverse()しても正しく求められないからlanceEffectを用いる。
 	// DIRECT_Dも、lanceEffectにこれ専用の高速なコードが書いてあるのでそれを用いる。
 	if (D == Effect8::DIRECT_U) return lanceEffect<BLACK>(sq, occupied);

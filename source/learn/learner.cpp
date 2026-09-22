@@ -78,6 +78,11 @@ using namespace std;
 // これは探索部で定義されているものとする。
 extern Book::BookMoveSelector book;
 
+// 乱将棋: usi.cppで定義されているランダム局面生成関数
+extern std::string generate_ranshogi_random_sfen();
+// 学習用: 玉・桂・香の配置制限なしで全特徴量をカバーする
+extern std::string generate_ranshogi_training_sfen();
+
 // atomic<T>に対する足し算、引き算の定義
 // Apery/learner.hppにあるatomicAdd()に合わせてある。
 template <typename T>
@@ -353,6 +358,10 @@ struct MultiThinkGenSfen : public MultiThink
 	static const u64 GENSFEN_HASH_SIZE = 64 * 1024 * 1024;
 
 	vector<Key> hash; // 64MB*sizeof(HASH_KEY) = 512MB
+
+	// start_sfens_file で指定された開始局面リスト (空ならランダム生成)
+	std::vector<std::string> start_sfens;
+	std::atomic<size_t> start_sfen_index{0};
 };
 
 //  thread_id    = 0..Threads.size()-1
@@ -380,10 +389,30 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 		auto th = Threads[thread_id];
 
 		auto& pos = th->rootPos;
-		pos.set_hirate(&si,th);
 
-		// 自分スレッド用の置換表があるはずなので自分の置換表だけをクリアする。
-		th->tt.clear();
+		// 乱将棋: ランダム互角局面から開始（学習用: 配置制限なし）
+		// start_sfens が指定されていればそのリストから順に取得、
+		// なければランダム生成 (駒価値合計だけ揃えた局面は大きく偏っていることが多いため、
+		// 浅い探索で評価値の絶対値が閾値未満のものだけを採用)。
+		{
+			std::string sfen;
+			if (!start_sfens.empty()) {
+				size_t idx = start_sfen_index.fetch_add(1) % start_sfens.size();
+				sfen = start_sfens[idx];
+				pos.set(sfen, &si, th);
+				th->tt.clear();
+			} else {
+				const int BALANCE_THRESHOLD = 1000;
+				const int FILTER_DEPTH = std::min(4, search_depth);
+				while (true) {
+					do { sfen = generate_ranshogi_training_sfen(); } while (sfen.empty());
+					pos.set(sfen, &si, th);
+					th->tt.clear();
+					auto pv_value = Learner::search(pos, FILTER_DEPTH);
+					if (std::abs((int)pv_value.first) < BALANCE_THRESHOLD) break;
+				}
+			}
+		}
 
 		// 探索部で定義されているBookMoveSelectorのメンバを参照する。
 		auto& book = ::book;
@@ -541,7 +570,7 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 //					sync_cout << pos << "eval limit = " << eval_limit << " over , move = " << pv1[0] << sync_endl;
 
 					// この局面でvalue1 >= eval_limitならば、(この局面の手番側の)勝ちである。
-					flush_psv((value1 >= eval_limit) ? 1 : -1);
+						flush_psv((value1 >= eval_limit) ? 1 : -1);
 					break;
 				}
 
@@ -674,7 +703,7 @@ void MultiThinkGenSfen::thread_worker(size_t thread_id)
 						// どのみち、hashが合致した時点でそこ以前の局面も合致している可能性が高いから
 						// 書き出す価値がない。
 						a_psv.clear();
-						goto SKIP_SAVE;
+					goto SKIP_SAVE;
 					}
 					hash[hash_index] = key; // 今回のkeyに入れ替えておく。
 				}
@@ -862,6 +891,9 @@ void gen_sfen(Position&, istringstream& is)
 	// ファイル名の末尾にランダムな数値を付与する。
 	bool random_file_name = false;
 
+	// start_sfens_file で指定された開始局面リスト (gensfen 用)
+	std::vector<std::string> gensfen_start_sfens;
+
 	while (true)
 	{
 		token = "";
@@ -907,6 +939,24 @@ void gen_sfen(Position&, istringstream& is)
 			is >> save_every;
 		else if (token == "random_file_name")
 			is >> random_file_name;
+		else if (token == "start_sfens_file")
+		{
+			std::string path;
+			is >> path;
+			std::ifstream ifs(path);
+			std::string line;
+			size_t cnt = 0;
+			while (std::getline(ifs, line)) {
+				// trim trailing whitespace
+				while (!line.empty() && (line.back() == '\r' || line.back() == '\n' || line.back() == ' ' || line.back() == '\t'))
+					line.pop_back();
+				if (!line.empty()) {
+					gensfen_start_sfens.push_back(line);
+					++cnt;
+				}
+			}
+			cout << "loaded " << cnt << " start sfens from " << path << endl;
+		}
 		else
 			cout << "Error! : Illegal token " << token << endl;
 	}
@@ -957,7 +1007,8 @@ void gen_sfen(Position&, istringstream& is)
 		<< "  output_file_name       = " << output_file_name << endl
 		<< "  use_eval_hash          = " << use_eval_hash << endl
 		<< "  save_every             = " << save_every << endl
-		<< "  random_file_name       = " << random_file_name << endl;
+		<< "  random_file_name       = " << random_file_name << endl
+		<< "  start_sfens            = " << gensfen_start_sfens.size() << " positions" << endl;
 
 	// Options["Threads"]の数だけスレッドを作って実行。
 	{
@@ -976,6 +1027,7 @@ void gen_sfen(Position&, istringstream& is)
 		multi_think.random_multi_pv_depth = random_multi_pv_depth;
 		multi_think.write_minply = write_minply;
 		multi_think.write_maxply = write_maxply;
+		multi_think.start_sfens = gensfen_start_sfens;
 		multi_think.start_file_write_worker();
 		multi_think.go_think();
 
@@ -1178,7 +1230,10 @@ struct SfenReader
 		no_shuffle = false;
 		stop_flag = false;
 
+		// hash is only used in !EVAL_NNUE mode; skip 512MB allocation for NNUE
+#if !defined(EVAL_NNUE)
 		hash.resize(READ_SFEN_HASH_SIZE);
+#endif
 	}
 
 	~SfenReader()
@@ -1207,19 +1262,14 @@ struct SfenReader
 			PackedSfenValue ps;
 			if (!read_to_thread_buffer(0, ps))
 			{
-				cout << "Error! read packed sfen , failed." << endl;
+				cout << "read_for_mse: pool empty at i=" << i << endl;
 				break;
 			}
-			sfen_for_mse.push_back(ps);
-
 			// hash keyを求める。
 			StateInfo si;
 			if (pos.set_from_packed_sfen(ps.sfen, &si, th).is_not_ok())
-			{
-				// 運悪くrmse計算用のsfenとして、不正なsfenを引いてしまっていた。
-				cout << "Error! : illegal packed sfen " << pos.sfen() << endl;
-				return;
-			}
+				continue;
+			sfen_for_mse.push_back(ps);
 			sfen_for_mse_hash.insert(pos.key());
 		}
 	}
@@ -1374,8 +1424,32 @@ struct SfenReader
 					// 次のファイルを読み込む。
 					if (!open_next_file())
 					{
-						// 次のファイルもなかった。あぼーん。
+						// 次のファイルもなかった。残りの部分バッファをプールに追加してから終了。
 						cout << "..end of files." << endl;
+
+						// 部分バッファをフラッシュ
+						if (sfens_read_offset > 0)
+						{
+							// shuffleして細切れにしてプールに追加する。
+							if (!no_shuffle)
+							{
+								for (size_t i = 0; i < sfens_read_offset; ++i)
+									swap(sfens[i], sfens[(size_t)(prng.rand((u64)sfens_read_offset - i) + i)]);
+							}
+							{
+								std::unique_lock<std::mutex> lk(mutex);
+								size_t offset = 0;
+								while (offset + THREAD_BUFFER_SIZE <= sfens_read_offset)
+								{
+									PSVector* ptr = new PSVector();
+									ptr->resize(THREAD_BUFFER_SIZE);
+									memcpy(&((*ptr)[0]), &sfens[offset], sizeof(PackedSfenValue) * THREAD_BUFFER_SIZE);
+									packed_sfens_pool.push_back(ptr);
+									offset += THREAD_BUFFER_SIZE;
+								}
+							}
+						}
+
 						end_of_files = true;
 						return;
 					}
@@ -1674,10 +1748,7 @@ void LearnerThink::calc_loss(size_t thread_id, u64 done)
 				StateInfo si;
 				auto& ps = sr.sfen_for_mse[position_index];
 				if (pos.set_from_packed_sfen(ps.sfen, &si, th).is_not_ok())
-				{
-					// 運悪くrmse計算用のsfenとして、不正なsfenを引いてしまっていた。
-					cout << "Error! : illegal packed sfen " << pos.sfen() << endl;
-				}
+					continue;
 
 				// 浅い探索の評価値
 				// evaluate()の値を用いても良いのだが、ロスを計算するときにlearn_cross_entropyと
@@ -1843,6 +1914,11 @@ void LearnerThink::thread_worker(size_t thread_id)
 	// 置換表は、自分のスレッド用の置換表が用意されている。(Thread.tt)
 	u64 qsearch_count = 0;
 
+	// デバッグ: スレッド開始を出力
+	std::cout << "thread_worker started: thread_id=" << thread_id
+	          << " total_done=" << sr.total_done
+	          << " next_update=" << sr.next_update_weights << std::endl;
+
 	while (true)
 	{
 		// mseの表示(これはthread 0のみときどき行う)
@@ -1951,9 +2027,6 @@ void LearnerThink::thread_worker(size_t thread_id)
 		if (!sr.read_to_thread_buffer(thread_id, ps))
 		{
 			// 自分のスレッド用の局面poolを使い尽くした。
-			// 局面がもうほとんど残っていないということだから、
-			// 他のスレッドもすべて終了させる。
-
 			stop_flag = true;
 			break;
 		}
@@ -2127,6 +2200,7 @@ void LearnerThink::thread_worker(size_t thread_id)
 
 		// PVの終端局面に達したので、ここで勾配を加算する。
 		pos_add_grad();
+
 
 		// 局面を巻き戻す
 		for (auto it = pv.rbegin(); it != pv.rend(); ++it)

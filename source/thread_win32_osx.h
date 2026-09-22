@@ -44,7 +44,9 @@ public:
         pthread_attr_setstacksize(attr, TH_STACK_SIZE);
         pthread_create(&thread, attr, start_routine<T>, new P(obj, fun));
     }
-    void join() { pthread_join(thread, NULL); }
+    // pthread_join()の戻り値(0なら成功)を返す
+    int join() { return pthread_join(thread, NULL); }
+    pthread_t native_handle() const { return thread; }
 };
 
 #else // Default case: use STL classes

@@ -123,7 +123,7 @@ namespace {
 							// 敵陣なので成りで王手できるから、sqより下段の香も足さないと。
 							if (file_of(sq) != FILE_1)
 								bb |= lanceStepEffect(~c, sq + SQ_R);
-							if (file_of(sq) != FILE_9)
+							if (file_of(sq) != FILE_6)
 								bb |= lanceStepEffect(~c, sq + SQ_L);
 						}
 
@@ -166,23 +166,23 @@ namespace {
 						// あと4段目の玉に3段目から成っての王手。玉のひとつ下の升とその斜めおよび、
 						// 玉のひとつ下の升の2つとなりの升
 						{
-							Rank r = (c == BLACK ? RANK_4 : RANK_6);
+							Rank r = (c == BLACK ? RANK_3 : RANK_4);
 							if (r == rank_of(sq))
 							{
-								r = (c == BLACK ? RANK_3 : RANK_7);
+								r = (c == BLACK ? RANK_2 : RANK_5);
 								to = (file_of(sq) | r);
 								bb |= to;
 								bb |= cross45StepEffect(to);
 
 								// 2升隣。
-								if (file_of(to) >= FILE_3)
+								if (file_of(to) >= FILE_2)
 									bb |= (to + SQ_R * 2);
-								if (file_of(to) <= FILE_7)
+								if (file_of(to) <= FILE_5)
 									bb |= (to + SQ_L * 2);
 							}
 
 							// 5段目の玉に成りでのバックアタック的な..
-							if (rank_of(sq) == RANK_5)
+							if (rank_of(sq) == (c == BLACK ? RANK_4 : RANK_2))
 								bb |= knightEffect(c, sq);
 						}
 						break;
@@ -242,7 +242,7 @@ namespace {
 						bb = lanceStepEffect(~c, sq);
 						if (file_of(sq) != FILE_1)
 							bb |= lanceStepEffect(~c, sq + SQ_R) | (sq + SQ_R);
-						if (file_of(sq) != FILE_9)
+						if (file_of(sq) != FILE_6)
 							bb |= lanceStepEffect(~c, sq + SQ_L) | (sq + SQ_L);
 						break;
 
@@ -344,8 +344,8 @@ namespace {
 	}
 
 	// 桂馬が次に成れる移動元の表現のために必要となるので用意。
-	const Bitboard RANK3_5BB = RANK3_BB | RANK4_BB | RANK5_BB;
-	const Bitboard RANK5_7BB = RANK5_BB | RANK6_BB | RANK7_BB;
+	const Bitboard RANK3_5BB = RANK3_BB | RANK4_BB;
+	const Bitboard RANK5_7BB = RANK3_BB | RANK4_BB;
 
 	//
 	//　以下、本当ならPositionに用意すべきヘルパ関数
@@ -1111,7 +1111,7 @@ namespace Mate {
 
 				// 敵陣で不成りで串刺しにする王手も入れなきゃ..
 			LANCE_NO_PRO:;
-				if ((Us == BLACK ? RANK3_BB : RANK7_BB) & to)
+				if ((Us == BLACK ? RANK2_BB : RANK5_BB) & to)
 				{
 					bb_attacks = lanceStepEffect<Us>(to);
 					if (!(bb_attacks & sq_king)) { continue; }

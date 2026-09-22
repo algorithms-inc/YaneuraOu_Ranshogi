@@ -44,6 +44,12 @@ class Thread
 
 public:
 
+#if defined(KACHIKIRE_DEBUG_KING_CAPTURE)
+	// デバッグ用: このThreadのsearch()を実行中のスレッドID(0なら実行中でない)。
+	// 2つのスレッドが同時に同じThreadのsearch()に入ったら止める。
+	std::atomic<uint64_t> dbg_searching_tid{ 0 };
+#endif
+
 	// ThreadPoolで何番目のthreadであるかをコンストラクタで渡すこと。この値は、idx(スレッドID)となる。
 	explicit Thread(size_t n);
 	virtual ~Thread();
@@ -242,6 +248,16 @@ struct MainThread: public Thread
 	// goコマンドの"wait_stop"フラグと関連して、↓と出力したかのフラグ。
 	// "info string time to return bestmove."
 	bool time_to_return_bestmove;
+
+	struct LastSearchResult {
+		bool valid = false;
+		Value score = VALUE_ZERO;
+		Depth depth = 0;
+		std::string pv_info;   // "info depth ... pv ..." 1行（または複数行）をそのまま
+		Move bestmove = MOVE_NONE;
+	};
+
+	LastSearchResult last_result;
 };
 
 

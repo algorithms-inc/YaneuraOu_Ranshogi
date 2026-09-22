@@ -335,7 +335,9 @@ public:
 	Bitboard pieces() const { ASSERT_LV3(is_ok(C)); return byColorBB[C]; }
 
 	// 駒がない升が1になっているBitboardが返る
-	Bitboard empties() const { return pieces() ^ Bitboard(1); }
+	Bitboard empties() const { 
+		return pieces() ^ Bitboard(1); 
+	}
 
 	// 駒に対応するBitboardを得る。
 	// ・引数でcの指定がないものは先後両方の駒が返る。
@@ -450,6 +452,18 @@ public:
 	void do_null_move(StateInfo& st);
 	// null move用のundo_move()
 	void undo_null_move();
+
+#if defined(KACHIKIRE_DEBUG_KING_CAPTURE)
+	// デバッグ用: set()されてからdo_move()/do_null_move()した手と、その手を指した側、探索開始局面のsfen。
+	// (thread_localの大きな配列はiOSでスレッド生成と干渉して落ちたので、局面クラスに持たせる)
+	static constexpr int DBG_PATH_MAX = 512;
+	Move dbg_path_[DBG_PATH_MAX];
+	int  dbg_side_[DBG_PATH_MAX];
+	int  dbg_len_;
+	char dbg_root_[192];
+	// set()のあと最初にdo_move()したスレッドのID。別スレッドがdo_move()/undo_move()したら止める。
+	uint64_t dbg_owner_;
+#endif
 
 	// --- legality(指し手の合法性)のチェック
 
@@ -673,6 +687,7 @@ public:
 	// --- デバッグ用の出力
 
 #if defined(KEEP_LAST_MOVE)
+	void show_moves_from_start() const; 
   // 開始局面からこの局面にいたるまでの指し手を表示する。
 	std::string moves_from_start() const { return moves_from_start(false); }
 	std::string moves_from_start_pretty() const { return moves_from_start(true); }
@@ -689,9 +704,41 @@ public:
 	// UnitTest
 	static void UnitTest(Test::UnitTester&);
 
+	// put_piece()やremove_piece()、xor_piece()を用いたときは、最後にupdate_bitboards()を呼び出して
+	// bitboardの整合性を保つこと。
+	// また、put_piece_simple()は、put_piece()の王の升(kingSquare)を更新しない版。do_move()で用いる。
+
+	// 駒を配置して、内部的に保持しているBitboardなどを更新する。
+	// 注意1 : kingを配置したときには、このクラスのkingSqaure[]を更新しないといけないが、
+	// この関数のなかでは行っていないので呼び出し側で更新すること。
+	// 注意2 : evalListのほうの更新もこの関数のなかでは行っていないので必要ならば呼び出し側で更新すること。
+	// 例) 
+	// if (type_of(pc) == KING)
+	//		kingSquare[color_of(pc)] = sq;
+	// もしくはupdate_kingSquare()を呼び出すこと。
+	void put_piece(Square sq, Piece pc);
+
+	// 駒を盤面から取り除き、内部的に保持しているBitboardも更新する。
+	void remove_piece(Square sq);
+
+	// sqの地点にpcを置く/取り除く、したとして内部で保持しているBitboardを更新する。
+	// 最後にupdate_bitboards()を呼び出すこと。
+	void xor_piece(Piece pc, Square sq);
+
+	// put_piece(),remove_piece(),xor_piece()を用いたあとに呼び出す必要がある。
+	void update_bitboards();
+
+	// このクラスが保持しているkingSquare[]の更新。
+	// put_piece(),remove_piece(),xor_piece()では玉の位置(kingSquare[])を
+	// 更新してくれないので、自前で更新するか、一連の処理のあとにこの関数を呼び出す必要がある。
+	void update_kingSquare();
+
+	void set_state(StateInfo* si) const;
+
+	void add_hand_ranshogi(Color c, PieceType pt);
+
 private:
 	// StateInfoの初期化(初期化するときに内部的に用いる)
-	void set_state(StateInfo* si) const;
 
 	// 王手になるbitboard等を更新する。set_state()とdo_move()のときに自動的に行われる。
 	// null moveのときは利きの更新を少し端折れるのでフラグを渡すことに。
@@ -722,35 +769,6 @@ private:
 	// 駒が存在する升を表すBitboard。先後混在。
 	// pieces()の引数と同じく、ALL_PIECES,HDKなどのPieceで定義されている特殊な定数が使える。
 	Bitboard byTypeBB[PIECE_BB_NB];
-
-	// put_piece()やremove_piece()、xor_piece()を用いたときは、最後にupdate_bitboards()を呼び出して
-	// bitboardの整合性を保つこと。
-	// また、put_piece_simple()は、put_piece()の王の升(kingSquare)を更新しない版。do_move()で用いる。
-
-	// 駒を配置して、内部的に保持しているBitboardなどを更新する。
-	// 注意1 : kingを配置したときには、このクラスのkingSqaure[]を更新しないといけないが、
-	// この関数のなかでは行っていないので呼び出し側で更新すること。
-	// 注意2 : evalListのほうの更新もこの関数のなかでは行っていないので必要ならば呼び出し側で更新すること。
-	// 例) 
-	// if (type_of(pc) == KING)
-	//		kingSquare[color_of(pc)] = sq;
-	// もしくはupdate_kingSquare()を呼び出すこと。
-	void put_piece(Square sq, Piece pc);
-
-	// 駒を盤面から取り除き、内部的に保持しているBitboardも更新する。
-	void remove_piece(Square sq);
-
-	// sqの地点にpcを置く/取り除く、したとして内部で保持しているBitboardを更新する。
-	// 最後にupdate_bitboards()を呼び出すこと。
-	void xor_piece(Piece pc, Square sq);
-
-	// put_piece(),remove_piece(),xor_piece()を用いたあとに呼び出す必要がある。
-	void update_bitboards();
-
-	// このクラスが保持しているkingSquare[]の更新。
-	// put_piece(),remove_piece(),xor_piece()では玉の位置(kingSquare[])を
-	// 更新してくれないので、自前で更新するか、一連の処理のあとにこの関数を呼び出す必要がある。
-	void update_kingSquare();
 
 #if defined (USE_EVAL_LIST)
 	// --- 盤面を更新するときにEvalListの更新のために必要なヘルパー関数
@@ -937,6 +955,10 @@ inline void Position::remove_piece(Square sq)
 }
 
 inline bool is_ok(Position& pos) { return pos.pos_is_ok(); }
+
+inline void Position::add_hand_ranshogi(Color c, PieceType pt) {
+    add_hand(hand[c], pt);
+}
 
 // 盤面を出力する。(USI形式ではない) デバッグ用。
 std::ostream& operator<<(std::ostream& os, const Position& pos);

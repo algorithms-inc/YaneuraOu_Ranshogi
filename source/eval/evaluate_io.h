@@ -72,10 +72,11 @@ namespace EvalIO
 
 		// やねうら王2015のKPP型評価関数の型定義を返すbuilder。
 		// 引数にはFileOrMemoryのコンストラクタに渡す、std::string filenameかvoid* ptr を渡す。
+		// 6x6乱将棋用: SQ_NB=36, fe_end=738 (fe_hand_end=90 + 18駒種×36)
 		template <typename T1,typename T2, typename T3>
 		static EvalInfo build_kpp(T1 kk_, T2 kkp_, T3 kpp_)
 		{
-			EvalInfo ei(81 /* SQ_NB */ ,1535 /* EvalKPP::fe_end */);
+			EvalInfo ei(SQ_NB /* 36 */ , 725 /* fe_end-13 for old KPP format (6x6) */);
 			ei.eval_info_array.emplace_back(EvalArrayInfo(KK , 4, 1 , FileOrMemory(kk_ ))); // KK は4バイト。(手番なしなので1つ)
 			ei.eval_info_array.emplace_back(EvalArrayInfo(KKP, 4, 1 , FileOrMemory(kkp_))); // KKPは4バイト。
 			ei.eval_info_array.emplace_back(EvalArrayInfo(KPP, 2, 1 , FileOrMemory(kpp_))); // KPPは2バイト。
@@ -87,7 +88,7 @@ namespace EvalIO
 		template <typename T1, typename T2, typename T3>
 		static EvalInfo build_kppt32(T1 kk_, T2 kkp_, T3 kpp_)
 		{
-			EvalInfo ei(81 /* SQ_NB */, 1548 /* EvalKPPT::fe_end */);
+			EvalInfo ei(SQ_NB /* 36 */, 738 /* Eval::fe_end for 6x6 ranshogi */);
 			ei.eval_info_array.emplace_back(EvalArrayInfo(KK , 4, 2 , FileOrMemory(kk_ ))); // KK は4バイト。(手番ありなので2つ)
 			ei.eval_info_array.emplace_back(EvalArrayInfo(KKP, 4, 2 , FileOrMemory(kkp_))); // KKPは4バイト。
 			ei.eval_info_array.emplace_back(EvalArrayInfo(KPP, 2, 2 , FileOrMemory(kpp_))); // KPPは2バイト。
@@ -99,7 +100,7 @@ namespace EvalIO
 		template <typename T1, typename T2, typename T3>
 		static EvalInfo build_kppt16(T1 kk_, T2 kkp_, T3 kpp_)
 		{
-			EvalInfo ei(81 /* SQ_NB */, 1548 /* EvalKPPT::fe_end */);
+			EvalInfo ei(SQ_NB /* 36 */, 738 /* Eval::fe_end for 6x6 ranshogi */);
 			ei.eval_info_array.emplace_back(EvalArrayInfo(KK , 2, 2 , FileOrMemory(kk_  ))); // KK は2バイト。(手番ありなので2つ)
 			ei.eval_info_array.emplace_back(EvalArrayInfo(KKP, 2, 2 , FileOrMemory(kkp_ ))); // KKPは2バイト。
 			ei.eval_info_array.emplace_back(EvalArrayInfo(KPP, 2, 2 , FileOrMemory(kpp_ ))); // KPPは2バイト。
@@ -111,7 +112,7 @@ namespace EvalIO
 		template <typename T1, typename T2, typename T3>
 		static EvalInfo build_kpp_kkpt32(T1 kk_, T2 kkp_, T3 kpp_)
 		{
-			EvalInfo ei(81 /* SQ_NB */, 1548 /* EvalKPPT::fe_end */);
+			EvalInfo ei(SQ_NB /* 36 */, 738 /* Eval::fe_end for 6x6 ranshogi */);
 			ei.eval_info_array.emplace_back(EvalArrayInfo(KK , 4, 2, FileOrMemory(kk_)));  // KK は4バイト。(手番ありなので2つ)
 			ei.eval_info_array.emplace_back(EvalArrayInfo(KKP, 4, 2, FileOrMemory(kkp_))); // KKPは4バイト。(手番ありなので2つ)
 			ei.eval_info_array.emplace_back(EvalArrayInfo(KPP, 2, 1, FileOrMemory(kpp_))); // KPPは2バイト。(手番なしなので1つ)
@@ -123,7 +124,7 @@ namespace EvalIO
 		template <typename T1, typename T2, typename T3, typename T4>
 		static EvalInfo build_kppp_kkpt32(T1 kk_, T2 kkp_, T3 kpp_ , T4 kppp_ , u64 size_of_kppp)
 		{
-			EvalInfo ei(81 /* SQ_NB */, 1548 /* EvalKPPT::fe_end */);
+			EvalInfo ei(SQ_NB /* 36 */, 738 /* Eval::fe_end for 6x6 ranshogi */);
 			ei.eval_info_array.emplace_back(EvalArrayInfo(KK  , 4, 2, FileOrMemory(kk_)));   // KK  は4バイト。(手番ありなので2つ)
 			ei.eval_info_array.emplace_back(EvalArrayInfo(KKP , 4, 2, FileOrMemory(kkp_)));  // KKP は4バイト。(手番ありなので2つ)
 			ei.eval_info_array.emplace_back(EvalArrayInfo(KPP , 2, 1, FileOrMemory(kpp_)));  // KPP は2バイト。(手番なしなので1つ)
@@ -135,7 +136,7 @@ namespace EvalIO
 		template <typename T1, typename T2, typename T3, typename T4>
 		static EvalInfo build_kpppt32(T1 kk_, T2 kkp_, T3 kpp_, T4 kppp_, u64 size_of_kppp)
 		{
-			EvalInfo ei(81 /* SQ_NB */, 1548 /* EvalKPPT::fe_end */);
+			EvalInfo ei(SQ_NB /* 36 */, 738 /* Eval::fe_end for 6x6 ranshogi */);
 			ei.eval_info_array.emplace_back(EvalArrayInfo(KK , 4, 2, FileOrMemory(kk_)));   // KK  は4バイト。(手番ありなので2つ)
 			ei.eval_info_array.emplace_back(EvalArrayInfo(KKP, 4, 2, FileOrMemory(kkp_)));  // KKP は4バイト。(手番ありなので2つ)
 			ei.eval_info_array.emplace_back(EvalArrayInfo(KPP, 2, 2, FileOrMemory(kpp_)));  // KPP は2バイト。(手番ありなので2つ)
@@ -147,7 +148,7 @@ namespace EvalIO
 		template <typename T1, typename T2, typename T3, typename T4>
 		static EvalInfo build_kkpp_kkpt32(T1 kk_, T2 kkp_, T3 kpp_, T4 kkpp_, u64 size_of_kkpp)
 		{
-			EvalInfo ei(81 /* SQ_NB */, 1548 /* EvalKPPT::fe_end */);
+			EvalInfo ei(SQ_NB /* 36 */, 738 /* Eval::fe_end for 6x6 ranshogi */);
 			ei.eval_info_array.emplace_back(EvalArrayInfo(KK , 4, 2, FileOrMemory(kk_)));   // KK  は4バイト。(手番ありなので2つ)
 			ei.eval_info_array.emplace_back(EvalArrayInfo(KKP, 4, 2, FileOrMemory(kkp_)));  // KKP は4バイト。(手番ありなので2つ)
 			ei.eval_info_array.emplace_back(EvalArrayInfo(KPP, 2, 1, FileOrMemory(kpp_)));  // KPP は2バイト。(手番なしなので1つ)
@@ -159,7 +160,7 @@ namespace EvalIO
 		template <typename T1, typename T2, typename T3, typename T4>
 		static EvalInfo build_kkppt32(T1 kk_, T2 kkp_, T3 kpp_, T4 kkpp_, u64 size_of_kkpp)
 		{
-			EvalInfo ei(81 /* SQ_NB */, 1548 /* EvalKPPT::fe_end */);
+			EvalInfo ei(SQ_NB /* 36 */, 738 /* Eval::fe_end for 6x6 ranshogi */);
 			ei.eval_info_array.emplace_back(EvalArrayInfo(KK , 4, 2, FileOrMemory(kk_)));   // KK  は4バイト。(手番ありなので2つ)
 			ei.eval_info_array.emplace_back(EvalArrayInfo(KKP, 4, 2, FileOrMemory(kkp_)));  // KKP は4バイト。(手番ありなので2つ)
 			ei.eval_info_array.emplace_back(EvalArrayInfo(KPP, 2, 2, FileOrMemory(kpp_)));  // KPP は2バイト。(手番ありなので2つ)
@@ -170,7 +171,7 @@ namespace EvalIO
 		template <typename T1, typename T2, typename T3>
 		static EvalInfo build_nabla(T1 kk_, T2 kkp_, T3 kpp_)
 		{
-			EvalInfo ei(81 /* SQ_NB */, 1548 + 1024*4 /* EvalKPPT::fe_end */);
+			EvalInfo ei(SQ_NB /* 36 */, 738 + 1024*4 /* Eval::fe_end + NABLA拡張 (6x6) */);
 			ei.eval_info_array.emplace_back(EvalArrayInfo(KK, 4, 2, FileOrMemory(kk_)));   // KK は4バイト。(手番ありなので2つ)
 			ei.eval_info_array.emplace_back(EvalArrayInfo(KKP, 4, 2, FileOrMemory(kkp_))); // KKPは4バイト。(手番ありなので2つ)
 			ei.eval_info_array.emplace_back(EvalArrayInfo(KPP, 2, 1, FileOrMemory(kpp_))); // KPPは2バイト。(手番なしなので1つ)

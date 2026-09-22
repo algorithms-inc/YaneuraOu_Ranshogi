@@ -80,4 +80,18 @@ namespace Eval
 
 #endif
 
+// Stub declarations for EVAL_MATERIAL + EVAL_LEARN (gensfen support).
+// The actual (no-op) implementations are in evaluate_material.cpp.
+#if defined(EVAL_MATERIAL) && defined(EVAL_LEARN)
+#include <string>
+#include <array>
+namespace Eval {
+	void init_grad(double eta1, u64 eta_epoch, double eta2, u64 eta2_epoch, double eta3);
+	void add_grad(Position& pos, Color rootColor, double delt_grad, const std::array<bool, 4>& freeze);
+	void update_weights(u64 epoch, const std::array<bool, 4>& freeze);
+	void save_eval(std::string suffix);
+	double get_eta();
+}
+#endif
+
 #endif // _EVALUATE_KPPT_COMMON_H_

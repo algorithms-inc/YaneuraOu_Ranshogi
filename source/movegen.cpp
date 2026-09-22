@@ -60,7 +60,7 @@ template <PieceType Pt, Color Us, bool All> struct make_move_target {
 				if (canPromote(Us, to))
 				{
 					mlist++->move = make_move_promote(from, to , Us, Pt);
-					if (All && rank_of(to) != (Us == BLACK ? RANK_1 : RANK_9))
+					if (All && rank_of(to) != (Us == BLACK ? RANK_1 : RANK_6))
 						mlist++->move = make_move(from, to , Us, Pt);
 				}
 				else
@@ -75,8 +75,8 @@ template <PieceType Pt, Color Us, bool All> struct make_move_target {
 			target2.foreach([&](Square to) { mlist++->move = make_move_promote(from, to , Us , Pt); });
 
 			// 不成で移動する升
-			target &= All ? (Us == BLACK ? BB_Table::ForwardRanksBB[WHITE][RANK_1] : BB_Table::ForwardRanksBB[BLACK][RANK_9]) :
-							(Us == BLACK ? BB_Table::ForwardRanksBB[WHITE][RANK_2] : BB_Table::ForwardRanksBB[BLACK][RANK_8]);
+			target &= All ? (Us == BLACK ? BB_Table::ForwardRanksBB[WHITE][RANK_1] : BB_Table::ForwardRanksBB[BLACK][RANK_6]) :
+							(Us == BLACK ? BB_Table::ForwardRanksBB[WHITE][RANK_2] : BB_Table::ForwardRanksBB[BLACK][RANK_5]);
 
 			target.foreach([&](Square to) { mlist++->move = make_move(from,to , Us , Pt); });
 		}
@@ -90,7 +90,8 @@ template <PieceType Pt, Color Us, bool All> struct make_move_target {
 				to = target.pop();
 				if (canPromote(Us, to))
 					mlist++->move = make_move_promote(from, to  , Us, Pt);
-				if ((Us == BLACK && rank_of(to) >= RANK_3) || (Us == WHITE && rank_of(to) <= RANK_7))
+				// 乱将棋(6x6)では1,2段目(後手は5,6段目)が行き所のない升なので、不成は3段目より手前だけ
+				if ((Us == BLACK && rank_of(to) >= RANK_3) || (Us == WHITE && rank_of(to) <= RANK_4))
 					mlist++->move = make_move(from, to , Us, Pt);
 			}
 		}
@@ -218,7 +219,7 @@ template <MOVE_GEN_TYPE GenType, Color Us, bool All> struct GeneratePieceMoves<G
 		auto target2 = pawnBbEffect<Us>(pieces) & target;
 
 		// 先手に対する1段目(後手ならば9段目)を表す定数
-		const Rank T_RANK1 = (Us == BLACK) ? RANK_1 : RANK_9;
+		const Rank T_RANK1 = (Us == BLACK) ? RANK_1 : RANK_6;
 
 		while (target2)
 		{
@@ -414,8 +415,12 @@ template <Color Us> struct GenerateDropMoves {
 				// それ以外のケース
 
 				Bitboard target1 = target & rank1_n_bb(Us, RANK_1); // 1段目
-				Bitboard target2 = target & (Us == BLACK ? RANK2_BB : RANK8_BB); // 2段目
-				Bitboard target3 = target & rank1_n_bb(Them, RANK_7); // 3～9段目( == 後手から見たときの1～7段目)
+				Bitboard target2 = target & (Us == BLACK ? RANK2_BB : RANK5_BB); // 2段目
+				Bitboard target3 = target & rank1_n_bb(Them, RANK_4); // 3～9段目( == 後手から見たときの1～7段目)
+
+                // TODO: 怪しい
+				//Bitboard target2 = target & (Us == BLACK ? RANK2_BB : RANK8_BB); // 2段目
+				//Bitboard target3 = target & rank1_n_bb(Them, RANK_7); // 3～9段目( == 後手から見たときの1～7段目)
 
 				switch (num - nextToLance) // 1段目に対する香・桂以外の駒打ちの指し手生成(最大で4種の駒)
 				{
@@ -654,11 +659,11 @@ ExtMove* make_move_target_pro(Square from, const Bitboard& target, ExtMove* mlis
 		{
 			if (   ((Pt == PAWN) &&
 					((!All && !canPromote(Us, to)) ||
-					(  All && rank_of(to) != (Us == BLACK ? RANK_1 : RANK_9))))
+					(  All && rank_of(to) != (Us == BLACK ? RANK_1 : RANK_6))))
 				|| ((Pt == LANCE) &&
-					((!All && ((Us == BLACK && rank_of(to) >= RANK_3) || (Us == WHITE && rank_of(to) <= RANK_7))) ||
-					 ( All && rank_of(to) != (Us == BLACK ? RANK_1 : RANK_9))))
-				|| ( Pt == KNIGHT && ((Us == BLACK && rank_of(to) >= RANK_3) || (Us == WHITE && rank_of(to) <= RANK_7)))
+					((!All && ((Us == BLACK && rank_of(to) >= RANK_2) || (Us == WHITE && rank_of(to) <= RANK_5))) ||
+					 ( All && rank_of(to) != (Us == BLACK ? RANK_1 : RANK_6))))
+				|| ( Pt == KNIGHT && ((Us == BLACK && rank_of(to) >= RANK_3) || (Us == WHITE && rank_of(to) <= RANK_4)))
 				|| ( Pt == SILVER)
 				|| ((Pt == BISHOP || Pt == ROOK) && (!(canPromote(Us, from) || canPromote(Us, to)) || All))
 				)
@@ -906,6 +911,7 @@ ExtMove* generateChecksMoves(const Position& pos, ExtMove* mlist)
 template<MOVE_GEN_TYPE GenType>
 ExtMove* generateMoves(const Position& pos, ExtMove* mlist, Square recapSq)
 {
+
 	// 歩の不成などを含め、すべての指し手を生成するのか。
 	// GenTypeの末尾に"ALL"とついているものがその対象。
 	const bool All = (GenType == EVASIONS_ALL) || (GenType == CHECKS_ALL)     || (GenType == LEGAL_ALL)

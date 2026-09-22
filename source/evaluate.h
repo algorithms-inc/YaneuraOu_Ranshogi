@@ -124,21 +124,24 @@ namespace Eval {
 		//  e_hand_lance = 後手の1枚目の手駒の香
 		// Aperyとは手駒に関してはこの部分の定数の意味が1だけ異なるので注意。
 
-		f_hand_pawn = BONA_PIECE_ZERO + 1,//0//0+1
-		e_hand_pawn = 20,//f_hand_pawn + 19,//19+1
-		f_hand_lance = 39,//e_hand_pawn + 19,//38+1
-		e_hand_lance = 44,//f_hand_lance + 5,//43+1
-		f_hand_knight = 49,//e_hand_lance + 5,//48+1
-		e_hand_knight = 54,//f_hand_knight + 5,//53+1
-		f_hand_silver = 59,//e_hand_knight + 5,//58+1
-		e_hand_silver = 64,//f_hand_silver + 5,//63+1
-		f_hand_gold = 69,//e_hand_silver + 5,//68+1
-		e_hand_gold = 74,//f_hand_gold + 5,//73+1
-		f_hand_bishop = 79,//e_hand_gold + 5,//78+1
-		e_hand_bishop = 82,//f_hand_bishop + 3,//81+1
-		f_hand_rook = 85,//e_hand_bishop + 3,//84+1
-		e_hand_rook = 88,//f_hand_rook + 3,//87+1
-		fe_hand_end = 90,//e_hand_rook + 3,//90
+		// 6x6乱将棋用: 将棋と同じ枚数 (歩18, 香桂銀金4, 角飛2)
+		// スロット数 = max_count + 1 (最後の飛車のみ max_count)
+		// → 手駒スロットは 9x9 将棋と同一
+		f_hand_pawn   = BONA_PIECE_ZERO + 1, // 1   (gap=19: 歩18枚+guard1)
+		e_hand_pawn   = 20,                  // 20  (= f_hand_pawn + 19)
+		f_hand_lance  = 39,                  // 39  (= e_hand_pawn + 19)
+		e_hand_lance  = 44,                  // 44  (= f_hand_lance + 5: 香4枚+guard1)
+		f_hand_knight = 49,                  // 49  (= e_hand_lance + 5)
+		e_hand_knight = 54,                  // 54  (= f_hand_knight + 5)
+		f_hand_silver = 59,                  // 59  (= e_hand_knight + 5)
+		e_hand_silver = 64,                  // 64  (= f_hand_silver + 5)
+		f_hand_gold   = 69,                  // 69  (= e_hand_silver + 5)
+		e_hand_gold   = 74,                  // 74  (= f_hand_gold + 5)
+		f_hand_bishop = 79,                  // 79  (= e_hand_gold + 5)
+		e_hand_bishop = 82,                  // 82  (= f_hand_bishop + 3: 角2枚+guard1)
+		f_hand_rook   = 85,                  // 85  (= e_hand_bishop + 3)
+		e_hand_rook   = 88,                  // 88  (= f_hand_rook + 3)
+		fe_hand_end   = 90,                  // 90  (= e_hand_rook + 2: 飛2枚, guardなし)
 
 #else 
 		fe_hand_end = 0,
@@ -148,40 +151,40 @@ namespace Eval {
 		// 理由1) 学習のときに相対PPで1段目に香がいるときがあって、それを逆変換において正しく表示するのが難しい。
 		// 理由2) 縦型BitboardだとSquareからの変換に困る。
 
-		// --- 盤上の駒
-		f_pawn = fe_hand_end,
-		e_pawn = f_pawn + 81,
-		f_lance = e_pawn + 81,
-		e_lance = f_lance + 81,
-		f_knight = e_lance + 81,
-		e_knight = f_knight + 81,
-		f_silver = e_knight + 81,
-		e_silver = f_silver + 81,
-		f_gold = e_silver + 81,
-		e_gold = f_gold + 81,
-		f_bishop = e_gold + 81,
-		e_bishop = f_bishop + 81,
-		f_horse = e_bishop + 81,
-		e_horse = f_horse + 81,
-		f_rook = e_horse + 81,
-		e_rook = f_rook + 81,
-		f_dragon = e_rook + 81,
-		e_dragon = f_dragon + 81,
-		fe_old_end = e_dragon + 81,
+		// --- 盤上の駒 (6x6: SQ_NB=36 スロット/駒種)
+		f_pawn    = fe_hand_end,
+		e_pawn    = f_pawn    + SQ_NB, // 78 + 36 = 114
+		f_lance   = e_pawn    + SQ_NB, // 150
+		e_lance   = f_lance   + SQ_NB, // 186
+		f_knight  = e_lance   + SQ_NB, // 222
+		e_knight  = f_knight  + SQ_NB, // 258
+		f_silver  = e_knight  + SQ_NB, // 294
+		e_silver  = f_silver  + SQ_NB, // 330
+		f_gold    = e_silver  + SQ_NB, // 366
+		e_gold    = f_gold    + SQ_NB, // 402
+		f_bishop  = e_gold    + SQ_NB, // 438
+		e_bishop  = f_bishop  + SQ_NB, // 474
+		f_horse   = e_bishop  + SQ_NB, // 510
+		e_horse   = f_horse   + SQ_NB, // 546
+		f_rook    = e_horse   + SQ_NB, // 582
+		e_rook    = f_rook    + SQ_NB, // 618
+		f_dragon  = e_rook    + SQ_NB, // 654
+		e_dragon  = f_dragon  + SQ_NB, // 690
+		fe_old_end = e_dragon + SQ_NB, // 726
 
 		// === 以下、拡張領域 ===
 
 		// 金と小駒の成り駒を区別する
 #if defined(DISTINGUISH_GOLDS)
-		f_pro_pawn = fe_old_end,
-		e_pro_pawn = f_pro_pawn + 81,
-		f_pro_lance = e_pro_pawn + 81,
-		e_pro_lance = f_pro_lance + 81,
-		f_pro_knight = e_pro_lance + 81,
-		e_pro_knight = f_pro_knight + 81,
-		f_pro_silver = e_pro_knight + 81,
-		e_pro_silver = f_pro_silver + 81,
-		fe_new_end = e_pro_silver + 81,
+		f_pro_pawn   = fe_old_end,
+		e_pro_pawn   = f_pro_pawn   + SQ_NB,
+		f_pro_lance  = e_pro_pawn   + SQ_NB,
+		e_pro_lance  = f_pro_lance  + SQ_NB,
+		f_pro_knight = e_pro_lance  + SQ_NB,
+		e_pro_knight = f_pro_knight + SQ_NB,
+		f_pro_silver = e_pro_knight + SQ_NB,
+		e_pro_silver = f_pro_silver + SQ_NB,
+		fe_new_end   = e_pro_silver + SQ_NB,
 #else
 		fe_new_end = fe_old_end,
 #endif

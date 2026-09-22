@@ -10,6 +10,13 @@
 // ただし、この値を数値として使用することがあるので数値化できる文字列にしておく必要がある。
 #define ENGINE_VERSION "7.63"
 
+// 探索スレッドのクラス名 Thread を、リンク時のシンボル名が他と衝突しない名前に置き換える。
+// iOSでUnityに静的リンクすると、Unityエンジン本体(libiPhone-lib.a)にも名前空間なしの
+// Threadクラスがあり、Thread::~Thread() のシンボルがそちらに解決されてしまう。
+// すると探索スレッドの解体時にjoinされないまま同じアドレスに作り直され、
+// 1つの探索スレッドを2本のネイティブスレッドが同時に探索して局面が壊れる(実機でクラッシュする)。
+#define Thread YaneuraOuThread
+
 // --------------------
 //  思考エンジンの種類
 // --------------------
@@ -24,10 +31,18 @@
 //#define YANEURAOU_ENGINE_NNUE            // やねうら王 通常探索部 NNUE評価関数
 //#define YANEURAOU_ENGINE_KPPT            // やねうら王 通常探索部 KPPT評価関数
 //#define YANEURAOU_ENGINE_KPP_KKPT        // やねうら王 通常探索部 KPP_KKPT評価関数
-//#define YANEURAOU_ENGINE_MATERIAL        // やねうら王 通常探索部 駒得評価関数
+#if !defined(YANEURAOU_ENGINE_KPPT)     && \
+    !defined(YANEURAOU_ENGINE_KPP_KKPT) && \
+    !defined(YANEURAOU_ENGINE_NNUE)     && \
+    !defined(YANEURAOU_ENGINE_DEEP)     && \
+    !defined(YANEURAOU_ENGINE_MATERIAL)
+  #define YANEURAOU_ENGINE_MATERIAL        // やねうら王 通常探索部 駒得評価関数(デフォルト)
+#endif
 //#define TANUKI_MATE_ENGINE               // tanuki- 詰め将棋solver  (2017/05/06～)
 //#define YANEURAOU_MATE_ENGINE            // やねうら王 詰将棋solver (2020/12/29～)
-//#define USER_ENGINE                      // ユーザーの思考エンジン
+#ifndef USER_ENGINE
+  //#define USER_ENGINE                      // ユーザーの思考エンジン
+#endif
 
 
 // --------------------
@@ -88,7 +103,7 @@
 // これをdefineすると、"EnteringKingRule"というオプションが自動追加される。
 // ※　Search::Limits.enteringKingRule に↑のオプションの値が反映される。
 //     Position::DeclarationWin()は、宣言勝ち判定を行うときに、それを見る。
-// #define USE_ENTERING_KING_WIN
+#define USE_ENTERING_KING_WIN
 
 
 // PV(読み筋)を表示するときに置換表の指し手をかき集めてきて表示するか。
@@ -179,7 +194,7 @@
 
 // エンジンオプションをコンパイル時に指定したい時に用いる。
 // ";"で区切って複数指定できる。
-// #define ENGINE_OPTIONS "FV_SCALE=24;BookFile=no_book"
+#define ENGINE_OPTIONS "BookFile=no_book"
 
 
 // ---------------------
@@ -350,7 +365,7 @@
 // (Position::moves_from_start_pretty()などにより、わかりやすい手順が得られる。
 // ただし通常探索においてはやや遅くなるので思考エンジンとしてリリースするときには無効にしておくこと。
 
-//#define KEEP_LAST_MOVE
+#define KEEP_LAST_MOVE
 
 
 // GlobalOptionという、EVAL_HASHを有効/無効を切り替えたり、置換表の有効/無効を切り替えたりする
@@ -422,7 +437,7 @@ constexpr int MAX_PLY_NUM = 246;
 	// 学習機能を有効にするオプション。
 	// 教師局面の生成、定跡コマンド(makebook thinkなど)を用いる時には、これを
 	// 有効化してコンパイルしなければならない。
-	//#define EVAL_LEARN
+	#define EVAL_LEARN
 
 	// デバッグ絡み
 	//#define ASSERT_LV 3
@@ -448,14 +463,14 @@ constexpr int MAX_PLY_NUM = 246;
 
 		#define EVAL_MATERIAL
 		// 駒割のみの評価関数ではサポートされていない機能をundefする。
-		#undef EVAL_LEARN
+		// #undef EVAL_LEARN  // gensfen用に有効化
 
 		// 実験用評価関数
 		// 駒得評価関数の拡張扱いをする。
-		#if MATERIAL_LEVEL >= 002
+		//#if MATERIAL_LEVEL >= 002
 			// evaluate()のために利きが必要。
-			#define LONG_EFFECT_LIBRARY
-		#endif
+		//	#define LONG_EFFECT_LIBRARY
+		//#endif
 	#endif
 
 	#if defined(YANEURAOU_ENGINE_KPPT)
@@ -545,7 +560,9 @@ constexpr int MAX_PLY_NUM = 246;
 // --- ユーザーの自作エンジンとして実行ファイルを公開するとき用の設定集
 
 #if defined(USER_ENGINE)
-	#define ENGINE_NAME "YaneuraOu user engine"
+    #ifndef ENGINE_NAME
+        #define ENGINE_NAME "YaneuraOu user engine"
+    #endif
 	#define USE_SEE
 	#define USE_EVAL
 	#define EVAL_MATERIAL
@@ -562,7 +579,9 @@ constexpr int MAX_PLY_NUM = 246;
 	#undef EVAL_LEARN
 	#undef ENABLE_TEST_CMD
 	#undef USE_GLOBAL_OPTIONS
-	#undef KEEP_LAST_MOVE
+	// 乱将棋版ではposition.cppのmoves_from_start周りがKEEP_LAST_MOVEを前提にしているので、
+	// これはundefしない。(undefするとFOR_TOURNAMENTビルドがコンパイルエラーになる)
+	//#undef KEEP_LAST_MOVE
 #endif
 
 // --------------------

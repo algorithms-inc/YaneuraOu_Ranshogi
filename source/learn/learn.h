@@ -45,7 +45,9 @@
 // ある程度大きいほうが良いが、この数×40byte×3倍ぐらいのメモリを消費する。10M局面なら400MB*3程度消費する。
 // THREAD_BUFFER_SIZE(=10000)の倍数にすること。
 
-#define LEARN_SFEN_READ_SIZE (1000 * 1000 * 10)
+// Reduced from 10M to 500K for 6x6 Ranshogi (training files ~500K positions each).
+// 10M * 40B = 400MB allocation was causing SIGBUS on macOS under memory pressure.
+#define LEARN_SFEN_READ_SIZE (1000 * 500)
 
 // 学習時の評価関数の保存間隔。この局面数だけ学習させるごとに保存。
 // 当然ながら、保存間隔を長くしたほうが学習時間は短くなる。

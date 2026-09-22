@@ -29,10 +29,32 @@ namespace Eval
 
 	void init() {}
 	Value compute_eval(const Position& pos) {
+		//return (Value)777;
 		auto score = pos.state()->materialValue;
 		ASSERT_LV5(pos.state()->materialValue == Eval::material(pos));
+        int hosei = 0;
+	    //if(rank_of(pos.king_square(BLACK)) == RANK_1) {
+	    //	//score = VALUE_MATE;
+	    //}
+	    //if(rank_of(pos.king_square(BLACK)) == RANK_2) {
+	    //	//score += 1000;
+	    //}
+	    //if(rank_of(pos.king_square(BLACK)) == RANK_3) {
+	    //	//score += 300;
+	    //}
+	    //if(rank_of(pos.king_square(WHITE)) == RANK_6) {
+	    //	//score = -VALUE_MATE;
+	    //}
+	    //if(rank_of(pos.king_square(WHITE)) == RANK_5) {
+	    //	//score = -VALUE_MATE;
+	    //}
+	    //if(rank_of(pos.king_square(WHITE)) == RANK_4) {
+	    //	//score = -VALUE_MATE;
+	    //}
+		//std::cout << VALUE_MATE << std::endl;
 
 		return pos.side_to_move() == BLACK ? score : -score;
+		//return pos.side_to_move() == BLACK ? score : -score;
 	}
 
 #elif MATERIAL_LEVEL == 2
@@ -392,8 +414,8 @@ namespace Eval
 
 		// 王様からの距離に応じたある升の利きの価値。
 
-		int our_effect_value[9];
-		int their_effect_value[9];
+		int our_effect_value[6];
+		int their_effect_value[6];
 
 		for (int d = 0; d < 9; ++d)
 		{
@@ -742,10 +764,10 @@ namespace Eval
 
 		// 王様からの距離に応じたある升の利きの価値。
 
-		int our_effect_value[9];
-		int their_effect_value[9];
+		int our_effect_value[6];
+		int their_effect_value[6];
 
-		for (int d = 0; d < 9; ++d)
+		for (int d = 0; d < 6; ++d)
 		{
 			// 利きには、王様からの距離に反比例する価値がある。
 			our_effect_value[d]   = 83 * 1024  / (d + 1);
@@ -789,17 +811,17 @@ namespace Eval
 		int our_effect_rate[10]   = { 1120, 1872,  112,  760, 744, 880, 1320, 600,  904 , 1024 };
 		int their_effect_rate[10] = { 1056, 1714, 1688, 1208, 248, 240,  496, 816,  928 , 1024 };
 
+		std::cout << "test1" << std::endl;
+
 		// 玉の升ごとにBonus(盤面の1段目9筋から9段目1筋の順)
 		int king_pos_bonus[] = {
-			875, 655, 830, 680, 770, 815, 720, 945, 755,
-			605, 455, 610, 595, 730, 610, 600, 590, 615,
-			565, 640, 555, 525, 635, 565, 440, 600, 575,
-			520, 515, 580, 420, 640, 535, 565, 500, 510,
-			220, 355, 240, 375, 340, 335, 305, 275, 320,
-			500, 530, 560, 445, 510, 395, 455, 490, 410,
-			345, 275, 250, 355, 295, 280, 420, 235, 135,
-			335, 370, 385, 255, 295, 200, 265, 305, 305,
-			255, 225, 245, 295, 200, 320, 275,  70, 200
+			//800, 900, 900, 900, 900, 800,
+			150, 150, 150, 150, 150, 150,
+			40, 40, 40, 40, 40, 40,
+			30, 30, 30, 30, 30, 30,
+			0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0,
 		};
 
 		// ある升の利きの価値のテーブルの初期化。
@@ -854,8 +876,8 @@ namespace Eval
 									
 									// 玉のいる升に対する加点
 									// テーブル、わかりやすいように段の順番で並べたので、やねうら王はSquareは筋の順で並んでいるから、転置する。
-									score += color_of(pc) == BLACK ? king_pos_bonus[(FILE_9-file_of(    sq )) + int(rank_of(    sq )*9)] :
-																	-king_pos_bonus[(FILE_9-file_of(Inv(sq))) + int(rank_of(Inv(sq))*9)];
+									score += color_of(pc) == BLACK ? king_pos_bonus[(FILE_6-file_of(    sq )) + int(rank_of(    sq )*6)] :
+																	-king_pos_bonus[(FILE_6-file_of(Inv(sq))) + int(rank_of(Inv(sq))*6)];
 
 								} else  {
 
@@ -887,11 +909,14 @@ namespace Eval
 	// KKPEE9 評価関数本体(わずか8行)
 	// 変数名短くするなどすれば１ツイート(140文字)に収まる。
 	Value compute_eval(const Position& pos) {
-
 		Value score = VALUE_ZERO;
-		for (auto sq : SQ)
+		if (pos.pieces().pop_count() == 0) {
+			return (Value)0;
+		}
+		for (auto sq : SQ) {
 			score += KKPEE[pos.king_square(BLACK)][pos.king_square(WHITE)][sq]
-				[std::min(int(pos.board_effect[BLACK].effect(sq)),2)][std::min(int(pos.board_effect[WHITE].effect(sq)),2)][pos.piece_on(sq)];
+				[std::min(int(pos.attackers_to(BLACK, sq, pos.pieces()).pop_count()),2)][std::min(int(pos.attackers_to(WHITE, sq, pos.pieces()).pop_count()),2)][pos.piece_on(sq)];
+		}
 
 		// KKPEE配列はFV_SCALE倍されているのでこれで割ってから駒割を加算する。
 		score = score / FV_SCALE + pos.state()->materialValue;
@@ -902,6 +927,19 @@ namespace Eval
 #endif // MATERIAL_LEVEL
 
 }
+
+// Stub implementations for EVAL_LEARN when using EVAL_MATERIAL.
+// These are needed to link learner.cpp (gensfen). The learn command
+// itself is not useful with material eval, but gensfen works fine.
+#if defined(EVAL_LEARN)
+namespace Eval {
+	void init_grad(double, u64, double, u64, double) {}
+	void add_grad(Position&, Color, double, const std::array<bool, 4>&) {}
+	void update_weights(u64, const std::array<bool, 4>&) {}
+	void save_eval(std::string) {}
+	double get_eta() { return 0.0; }
+}
+#endif
 
 #endif // defined(EVAL_MATERIAL)
 

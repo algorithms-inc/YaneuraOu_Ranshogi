@@ -175,12 +175,14 @@ namespace USI {
 		o["GenerateAllLegalMoves"] << Option(true);
 #else
 		// 通常探索エンジンではデフォルトでオフ。
+        //std::cout << "here######" << std::endl;
 		o["GenerateAllLegalMoves"] << Option(false);
+		//o["GenerateAllLegalMoves"] << Option(true);
 #endif
 
 #if defined (USE_ENTERING_KING_WIN)
 		// 入玉ルール
-		o["EnteringKingRule"] << Option(USI::ekr_rules, USI::ekr_rules[EKR_27_POINT]);
+		o["EnteringKingRule"] << Option(USI::ekr_rules, USI::ekr_rules[EKR_TRY_RULE]);
 #endif
 
 #if defined (USE_SHARED_MEMORY_IN_EVAL) && defined(_WIN32) && \

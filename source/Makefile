@@ -106,7 +106,7 @@ EXTRA_CPPFLAGS =
 #  1 : 普通の駒得のみの評価関数
 #  2 : …
 # cf.【連載】評価関数を作ってみよう！その1 : http://yaneuraou.yaneu.com/2020/11/17/make-evaluate-function/
-MATERIAL_LEVEL = 1
+MATERIAL_LEVEL = 9
 
 # evallearnで使用するBLASの種類を指定する。
 BLAS = OPENBLAS
@@ -262,7 +262,7 @@ ifneq (,$(findstring clang++,$(COMPILER)))
 			OPENMP_LDFLAGS =
 		else
 			# Other (normal clang++/libomp env)
-			OPENMP = -fopenmp
+			OPENMP = -Xpreprocessor -fopenmp
 			OPENMP_LDFLAGS = -lomp
 		endif
 	endif
@@ -271,8 +271,8 @@ endif
 # NNUE評価関数 学習バイナリ用 OpenBLAS
 ifneq (,$(findstring YANEURAOU_ENGINE_NNUE,$(YANEURAOU_EDITION)))
 	ifeq ($(BLAS),OPENBLAS)
-		BLAS_CPPFLAGS = -DUSE_BLAS
-		BLAS_LDFLAGS = -lopenblas
+		BLAS_CPPFLAGS = -DUSE_BLAS -I/usr/local/opt/openblas/include
+		BLAS_LDFLAGS = -lopenblas -L/usr/local/opt/openblas/lib
 		ifeq ($(MSYSTEM),MINGW64)
 			BLAS_CPPFLAGS += -I$(shell cygpath -aw /mingw64/include/OpenBLAS)
 		endif
@@ -339,16 +339,14 @@ OBJC_SOURCES =
 # 仕方ないので無条件で追加しておく。cppファイルのほうで、
 #  if!defined(EVAL_LEARN)..とか書いてあるのでとりあえずいいや。
 
-ifeq (,)
-	SOURCES  +=                                                                \
-		book/makebook.cpp                                                      \
-		book/makebook2015.cpp                                                  \
-		book/makebook2019.cpp                                                  \
-		book/makebook2021.cpp                                                  \
-		learn/learner.cpp                                                      \
-		learn/learning_tools.cpp                                               \
-		learn/multi_think.cpp
-endif
+SOURCES  +=                                                                \
+	book/makebook.cpp                                                      \
+	book/makebook2015.cpp                                                  \
+	book/makebook2019.cpp                                                  \
+	book/makebook2021.cpp                                                  \
+	learn/learner.cpp                                                      \
+	learn/learning_tools.cpp                                               \
+	learn/multi_think.cpp
 
 ifeq ($(YANEURAOU_EDITION),YANEURAOU_ENGINE_KPPT)
 	SOURCES  +=                                                                \
@@ -452,6 +450,7 @@ ifneq (,$(findstring YANEURAOU_ENGINE_NNUE,$(YANEURAOU_EDITION)))
 		eval/nnue/features/half_relative_kp.cpp                         \
 		eval/nnue/features/half_kpe9.cpp                                \
 		eval/nnue/features/pe9.cpp                                      \
+		engine/myengine/my-search.cpp                                   \
 		engine/yaneuraou-engine/yaneuraou-search.cpp
 
 	ifneq (,$(findstring em++,$(COMPILER)))
@@ -477,10 +476,10 @@ ifeq ($(YANEURAOU_EDITION),YANEURAOU_MATE_ENGINE)
 		engine/yaneuraou-mate-engine/yaneuraou-mate-search.cpp
 endif
 
-ifeq ($(YANEURAOU_EDITION),USER_ENGINE)
+#ifeq ($(YANEURAOU_EDITION),USER_ENGINE)
 	SOURCES += \
 		engine/user-engine/user-search.cpp
-endif
+#endif
 
 
 ifneq ($(ENGINE_NAME),)
@@ -654,3 +653,104 @@ clean:
 	rm -f $(OBJECTS) $(CUDA_OBJECTS) $(OBJC_OBJECTS) $(DEPENDS) $(TARGET) ${OBJECTS:.o=.gcda}
 
 -include $(DEPENDS)
+
+# --------------------------------------------------------------------
+# モバイル(iOS/Android)組み込み用 静的ライブラリ
+# --------------------------------------------------------------------
+# main.cpp(USI標準入出力ループ)を外し、代わりに mobile/ranshogi_api.cpp を入れる。
+#
+#   ホスト(Mac)での動作確認:
+#     make -j libtest TARGET_CPU=OTHER OBJDIR=../obj_nosse
+#     ./ranshogi_apitest evalsave/d12_rl_v1_final 8
+#
+#   iOS実機(arm64): make ios (NEON版。下の ios ターゲットを参照)
+#
+# NOTE: TARGET_CPU=OTHER は -DNO_SSE を立てる(SIMDなし)。Mac(Intel)での動作確認やエディタ用はこれ。
+
+# main.cpp(USIの標準入出力ループ)と、実験用エンジンの残骸を外す。
+# my-search.cpp は EVAL_LEARN 前提のコードなので、学習機能を切るモバイル版には入れられない。
+LIB_EXCLUDE = main.cpp engine/myengine/my-search.cpp engine/user-engine/user-search.cpp
+LIB_SOURCES = $(filter-out $(LIB_EXCLUDE),$(SOURCES)) mobile/ranshogi_api.cpp
+LIB_OBJECTS = $(addprefix $(OBJDIR)/, $(LIB_SOURCES:.cpp=.o))
+LIB_TARGET  = $(TARGETDIR)/libranshogi.a
+LIBTEST_TARGET = $(TARGETDIR)/ranshogi_apitest
+
+.PHONY : lib libtest libclean
+
+lib: $(LIB_TARGET)
+
+$(LIB_TARGET): $(LIB_OBJECTS)
+	@[ -d $(dir $@) ] || mkdir -p $(dir $@)
+	rm -f $@
+	$(AR) rcs $@ $^
+
+libtest: $(LIB_TARGET)
+	$(COMPILER) $(CPPFLAGS) $(INCLUDE) -o $(LIBTEST_TARGET) mobile/test_main.cpp $(LIB_TARGET) $(LDFLAGS)
+
+libclean:
+	rm -f $(LIB_OBJECTS) $(LIB_OBJECTS:.o=.d) $(LIB_TARGET) $(LIBTEST_TARGET)
+
+# --- iOS実機(arm64)向け ---
+# 注意:
+#  ・-DUSE_NEON で評価関数をNEONで計算する(TARGET_CPU=OTHER の -DNO_SSE は使わない)
+#  ・-DIS_64BIT は必須。config.hの64bit判定が x86_64 決め打ちで、
+#    これが無いとarm64が32bit環境とみなされ、EvalHashなどが無効化される。
+#  ・-DFOR_TOURNAMENT で学習機能/テストコマンド/GlobalOptionsを削ぎ落とす。
+#
+#   make ios
+#   → mobile/build/ios-device/libranshogi.a
+# --- macOS(Unityエディタ)向け 動的ライブラリ ---
+# エディタのPlayモードでAI対戦を試すために必要。実機と同じNO_SSE/FOR_TOURNAMENT構成で作る。
+#
+#   make mac
+#   → mobile/build/macos/libranshogi.dylib
+.PHONY : mac
+
+mac:
+	$(MAKE) lib TARGET_CPU=OTHER OBJDIR=../obj_mac TARGETDIR=./mobile/build/macos EXTRA_CPPFLAGS='-DFOR_TOURNAMENT'
+	$(COMPILER) -dynamiclib -o mobile/build/macos/libranshogi.dylib \
+	  -Wl,-all_load mobile/build/macos/libranshogi.a -lpthread
+	# Unityがネイティブプラグインとして認識するのは .bundle なのでコピーを作る。
+	# (このプロジェクトのFirebaseプラグインも、中身はdylibのままの単一ファイル .bundle)
+	cp mobile/build/macos/libranshogi.dylib mobile/build/macos/ranshogi.bundle
+
+IOS_MIN_VERSION = 13.0
+# -DUSE_NEON: 評価関数(NNUE)をNEONで計算する。NO_SSE版と評価値が一致することを実機で確認済み。
+IOS_CPPFLAGS = -DIS_64BIT -DUSE_NEON -DFOR_TOURNAMENT
+
+.PHONY : ios
+
+# TARGET_CPU=IOS_NEON は上のCPU別の分岐に当たらない(-DNO_SSEを立てない)ので、SIMDの指定はIOS_CPPFLAGSで行う。
+ios:
+	$(MAKE) lib TARGET_CPU=IOS_NEON OBJDIR=../obj_ios TARGETDIR=./mobile/build/ios-device \
+	  COMPILER='xcrun -sdk iphoneos clang++' \
+	  EXTRA_CPPFLAGS='-arch arm64 -miphoneos-version-min=$(IOS_MIN_VERSION) $(IOS_CPPFLAGS)'
+
+
+# --- Android実機(arm64-v8a)向け 共有ライブラリ ---
+# 押さえておくべき点:
+#  ・-Wl,-z,max-page-size=16384 は必須。これが無いと4KBページ前提の配置になり、
+#    Google Play が「16 KB メモリのページサイズをサポートしていません」と言ってくる
+#    (Android 15以降の端末は16KBページで動くものがある)。
+#  ・C++ランタイムは静的に入れる。libc++_shared.so をapkに同梱しなくて済む。
+#  ・iOSと同じ -DIS_64BIT -DUSE_NEON -DFOR_TOURNAMENT で作る。
+#  ・NDKはUnityが同梱しているものを既定にしている。別のNDKを使うなら NDK_DIR を渡す。
+#
+#   make android
+#   → mobile/build/android-arm64/libranshogi.so
+NDK_DIR ?= /Applications/Unity/Hub/Editor/6000.2.14f1/PlaybackEngines/AndroidPlayer/NDK
+# アプリの AndroidMinSdkVersion と同じにしておく
+ANDROID_API = 23
+ANDROID_BIN = $(NDK_DIR)/toolchains/llvm/prebuilt/darwin-x86_64/bin
+ANDROID_CLANGXX = $(ANDROID_BIN)/aarch64-linux-android$(ANDROID_API)-clang++
+ANDROID_BUILDDIR = ./mobile/build/android-arm64
+
+.PHONY : android
+
+android:
+	$(MAKE) lib TARGET_CPU=IOS_NEON OBJDIR=../obj_android TARGETDIR=$(ANDROID_BUILDDIR) \
+	  COMPILER='$(ANDROID_CLANGXX)' AR='$(ANDROID_BIN)/llvm-ar' \
+	  EXTRA_CPPFLAGS='-fPIC $(IOS_CPPFLAGS)'
+	$(ANDROID_CLANGXX) -shared -o $(ANDROID_BUILDDIR)/libranshogi.so \
+	  -Wl,--whole-archive $(ANDROID_BUILDDIR)/libranshogi.a -Wl,--no-whole-archive \
+	  -static-libstdc++ -Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384 -Wl,-s

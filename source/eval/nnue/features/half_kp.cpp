@@ -7,6 +7,12 @@
 #include "half_kp.h"
 #include "index_list.h"
 
+#if defined(KACHIKIRE_DEBUG_KSQ)
+#include <cstdlib>
+#include <iostream>
+#include <sstream>
+#endif
+
 namespace Eval {
 
 namespace NNUE {
@@ -31,6 +37,23 @@ inline void HalfKP<AssociatedKing>::GetPieces(
       static_cast<PieceNumber>(PIECE_NUMBER_KING + perspective) :
       static_cast<PieceNumber>(PIECE_NUMBER_KING + ~perspective);
   *sq_target_k = static_cast<Square>(((*pieces)[target] - f_king) % SQ_NB);
+
+#if defined(KACHIKIRE_DEBUG_KSQ)
+  // デバッグ用: 玉の位置が盤外になっていたら(駒リストの玉の欄が壊れている)、局面と駒リストを出して止める
+  // Square(enum)のまま負数と比較すると、コンパイラが「常に偽」として消すことがあるのでintで比較する
+  const int k_raw = (static_cast<int>((*pieces)[target]) - static_cast<int>(f_king)) % static_cast<int>(SQ_NB);
+  if (k_raw < 0 || k_raw >= static_cast<int>(SQ_NB)) {
+    std::ostringstream oss;
+    oss << "info string BAD_KSQ perspective=" << (int)perspective
+        << " king_slot=" << (int)(*pieces)[target]
+        << " sq=" << (int)*sq_target_k
+        << " sfen " << pos.sfen() << " list";
+    for (int i = 0; i < EvalList::MAX_LENGTH; ++i)
+      oss << ' ' << (int)(*pieces)[i];
+    std::cout << oss.str() << std::endl;
+    std::abort();
+  }
+#endif
 }
 
 // 特徴量のうち、値が1であるインデックスのリストを取得する

@@ -2,6 +2,11 @@
 
 #include "thread.h"
 #include "usi.h"
+#include "dbg_kachikire.h"
+
+#if defined(KACHIKIRE_DEBUG_KING_CAPTURE)
+#include <sstream>
+#endif
 
 ThreadPool Threads;		// Global object
 
@@ -10,6 +15,14 @@ Thread::Thread(size_t n) : idx(n) , stdThread(&Thread::idle_loop, this)
 #if !defined(__EMSCRIPTEN__)
 	// スレッドはsearching == trueで開始するので、このままworkerのほう待機状態にさせておく
 	wait_for_search_finished();
+#if defined(KACHIKIRE_DEBUG_KING_CAPTURE)
+	{
+		std::ostringstream oss;
+		oss << "THREAD_CTOR_DONE idx=" << idx << " this=" << static_cast<const void*>(this)
+			<< " creator_tid=" << dbg_thread_id();
+		dbg_log_line(oss.str());
+	}
+#endif
 #else
 	// yaneuraou.wasm
 	// wait_for_search_finished すると、ブラウザのメインスレッドをブロックしデッドロックが発生するため、コメントアウト。
@@ -34,7 +47,25 @@ Thread::~Thread()
 	// 探索は終わっているのでexitフラグをセットしてstart_searching()を呼べば終了するはず。
 	exit = true;
 	start_searching();
+#if defined(KACHIKIRE_DEBUG_KING_CAPTURE) && defined(__APPLE__)
+	{
+		uint64_t target_tid = 0;
+		const int tid_rc = pthread_threadid_np(stdThread.native_handle(), &target_tid);
+		{
+			std::ostringstream oss;
+			oss << "THREAD_DTOR_JOIN_BEGIN idx=" << idx << " this=" << static_cast<const void*>(this)
+				<< " target_tid=" << target_tid << " tid_rc=" << tid_rc << " caller_tid=" << dbg_thread_id();
+			dbg_log_line(oss.str());
+		}
+		const int join_rc = stdThread.join();
+		std::ostringstream oss;
+		oss << "THREAD_DTOR_JOIN_END idx=" << idx << " this=" << static_cast<const void*>(this)
+			<< " target_tid=" << target_tid << " join_rc=" << join_rc;
+		dbg_log_line(oss.str());
+	}
+#else
 	stdThread.join();
+#endif
 }
 
 // このクラスが保持している探索で必要なテーブル(historyなど)をクリアする。
@@ -102,6 +133,15 @@ void Thread::idle_loop() {
 		// 上の投稿者と条件が何か違うのだろうか…。
 		// 前のバージョンのソフトが、こちらのNUMAの割当を阻害している可能性が微レ存。
 
+#if defined(KACHIKIRE_DEBUG_KING_CAPTURE)
+	{
+		std::ostringstream oss;
+		oss << "IDLE_LOOP_START idx=" << idx << " this=" << static_cast<const void*>(this)
+			<< " tid=" << dbg_thread_id();
+		dbg_log_line(oss.str());
+	}
+#endif
+
 	while (true)
 	{
 		std::unique_lock<std::mutex> lk(mutex);
@@ -114,18 +154,52 @@ void Thread::idle_loop() {
 		cv.wait(lk, [&] { return searching; });
 
 		if (exit)
+		{
+#if defined(KACHIKIRE_DEBUG_KING_CAPTURE)
+			std::ostringstream oss;
+			oss << "IDLE_LOOP_EXIT idx=" << idx << " this=" << static_cast<const void*>(this)
+				<< " tid=" << dbg_thread_id();
+			dbg_log_line(oss.str());
+#endif
 			return;
+		}
 
 		lk.unlock();
 
 		// exit == falseということはsearch == trueというわけだから探索する。
+#if defined(KACHIKIRE_DEBUG_KING_CAPTURE)
+		{
+			const uint64_t me = dbg_thread_id();
+			uint64_t expected = 0;
+			if (!dbg_searching_tid.compare_exchange_strong(expected, me))
+			{
+				std::ostringstream oss;
+				oss << "DOUBLE_SEARCH idx=" << idx << " this=" << static_cast<const void*>(this)
+					<< " running_tid=" << expected << " me_tid=" << me;
+				dbg_log_line(oss.str());
+				dbg_log_backtrace("DOUBLE_SEARCH");
+				std::abort();
+			}
+		}
 		search();
+		dbg_searching_tid.store(0);
+#else
+		search();
+#endif
 	}
 }
 
 // スレッド数を変更する。
 void ThreadPool::set(size_t requested)
 {
+#if defined(KACHIKIRE_DEBUG_KING_CAPTURE)
+	{
+		std::ostringstream oss;
+		oss << "THREADPOOL_SET requested=" << requested << " size=" << size()
+			<< " pool=" << static_cast<const void*>(this) << " tid=" << dbg_thread_id();
+		dbg_log_line(oss.str());
+	}
+#endif
 #if defined(__EMSCRIPTEN__)
 	// yaneuraou.wasm
 	// ブラウザのメインスレッドをブロックしないようstockfish.wasmと同様の実装に修正
@@ -226,10 +300,11 @@ void ThreadPool::start_thinking(const Position& pos, StateListPtr& states ,
 
 	} else {
 
-		for (auto m : MoveList<LEGAL>(pos))
+		for (auto m : MoveList<LEGAL>(pos)) {
 			if (limits.searchmoves.empty()
 				|| std::count(limits.searchmoves.begin(), limits.searchmoves.end(), m))
 				rootMoves.emplace_back(m);
+		}
 	}
 
 	// After ownership transfer 'states' becomes empty, so if we stop the search

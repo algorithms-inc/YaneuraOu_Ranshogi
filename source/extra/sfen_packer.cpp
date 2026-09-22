@@ -45,6 +45,9 @@ struct BitStream
   // ストリームから1ビット取り出す。
   FORCE_INLINE int read_one_bit()
   {
+    // 6x6乱将棋では駒数が少なく256bit未満になる場合がある。
+    // 256bit境界をクランプしてオーバーフローを防ぐ。
+    if (bit_cursor >= 256) return 0;
     int b = (data[bit_cursor / 8] >> (bit_cursor & 7)) & 1;
     ++bit_cursor;
 
@@ -376,8 +379,12 @@ Tools::Result Position::set_from_packed_sfen(const PackedSfen& sfen , StateInfo 
 	}
 	else
 	{
-		for (auto c : COLOR)
-			board[stream.read_n_bit(7)] = make_piece(c, KING);
+		for (auto c : COLOR) {
+			int ksq = stream.read_n_bit(7);
+			if (ksq >= SQ_NB)
+				return Tools::Result(Tools::ResultCode::SomeError);
+			board[ksq] = make_piece(c, KING);
+		}
 	}
 
 	// 盤上の駒
@@ -428,11 +435,46 @@ Tools::Result Position::set_from_packed_sfen(const PackedSfen& sfen , StateInfo 
 	int i = 0;
 	Piece lastPc = NO_PIECE;
 
+#if defined(USE_EVAL_LIST)
+	// 6x6乱将棋: 盤上の駒でpiece_no_countが消費された分を踏まえ、
+	// 手駒として追加できる上限を駒種ごとに設定する。
+	// PieceType順: NO_PIECE_TYPE=0, PAWN=1, LANCE=2, KNIGHT=3, SILVER=4,
+	//              BISHOP=5, ROOK=6, GOLD=7  ← GOLDとBISHOP/ROOKに注意
+	// PIECE_NUMBER割り当て: PAWN(0-17), LANCE(18-21), KNIGHT(22-25), SILVER(26-29),
+	//                       GOLD(30-33), BISHOP(34-35), ROOK(36-37)
+	const PieceNumber piece_no_limit[KING] = {
+		(PieceNumber)0,      // [0] NO_PIECE_TYPE (unused)
+		PIECE_NUMBER_LANCE,  // [1] PAWN:   slots 0-17,  limit=18
+		PIECE_NUMBER_KNIGHT, // [2] LANCE:  slots 18-21, limit=22
+		PIECE_NUMBER_SILVER, // [3] KNIGHT: slots 22-25, limit=26
+		PIECE_NUMBER_GOLD,   // [4] SILVER: slots 26-29, limit=30
+		PIECE_NUMBER_ROOK,   // [5] BISHOP: slots 34-35, limit=36
+		PIECE_NUMBER_KING,   // [6] ROOK:   slots 36-37, limit=38
+		PIECE_NUMBER_BISHOP, // [7] GOLD:   slots 30-33, limit=34
+	};
+#endif
+
 	while (stream.get_cursor() < 256)
 	{
 		// 256になるまで手駒が格納されているはず
 		auto pc = packer.read_hand_piece_from_stream();
-		add_hand(hand[(int)color_of(pc)], type_of(pc));
+
+		PieceType rpc = raw_type_of(pc);
+		Color pc_color = color_of(pc);
+
+#if defined(USE_EVAL_LIST)
+		// 6x6: piece_no_countが上限に達した = ゼロパディングの偽駒なので読み捨て
+		if ((int)rpc > 0 && (int)rpc < KING && piece_no_count[rpc] >= piece_no_limit[rpc])
+			continue;
+#else
+		// USE_EVAL_LISTなし: 手駒の絶対的な最大枚数でガード
+		static const int max_hand_count_by_type[] = {0, 18, 4, 4, 4, 4, 2, 2, 0};
+		if ((int)rpc < (int)(sizeof(max_hand_count_by_type)/sizeof(max_hand_count_by_type[0]))
+			&& hand_count(hand[(int)pc_color], rpc) >= max_hand_count_by_type[(int)rpc])
+			continue;
+#endif
+
+		add_hand(hand[(int)pc_color], type_of(pc));
 
 #if defined(USE_EVAL_LIST)
 		// 何枚目のその駒であるかをカウントしておく。
@@ -441,19 +483,16 @@ Tools::Result Position::set_from_packed_sfen(const PackedSfen& sfen , StateInfo 
 		lastPc = pc;
 
 		// FV38などではこの個数分だけpieceListに突っ込まないといけない。
-		PieceType rpc = raw_type_of(pc);
-
         PieceNumber piece_no = piece_no_count[rpc]++;
 		ASSERT_LV1(is_ok(piece_no));
-		evalList.put_piece(piece_no, color_of(pc), rpc, i++);
+		evalList.put_piece(piece_no, pc_color, rpc, i++);
 #endif
 	}
 
-	if (stream.get_cursor() != 256)
+	// 6x6では実データが256bit未満のため cursor が256に達しない場合もある。
+	// BitStreamのクランプにより cursor は256以下に収まる。
+	if (stream.get_cursor() < 256)
 	{
-		// こんな局面はおかしい。デバッグ用。
-		//cout << "Error : set_from_packed_sfen() , position = " << endl << *this << endl;
-		//ASSERT_LV1(false);
 		return Tools::Result(Tools::ResultCode::SomeError);
 	}
 
@@ -463,7 +502,6 @@ Tools::Result Position::set_from_packed_sfen(const PackedSfen& sfen , StateInfo 
 	// set_state()で駒種別のbitboardを参照するのでそれまでにこの関数を呼び出す必要がある。
 	update_bitboards();
 	update_kingSquare();
-
 	set_state(st);
 
 	// --- effect

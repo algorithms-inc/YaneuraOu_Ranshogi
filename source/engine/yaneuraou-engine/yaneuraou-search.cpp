@@ -695,6 +695,17 @@ SKIP_SEARCH:;
 	// 指し手をGUIに返す
 	// ---------------------
 
+	std::string info = USI::pv(bestThread->rootPos,
+							bestThread->completedDepth,
+							-VALUE_INFINITE, VALUE_INFINITE);
+
+	// 保存（メインスレッドに寄せたいなら Threads.main() に入れてもOK）
+	Threads.main()->last_result.valid = true;
+	Threads.main()->last_result.depth = bestThread->completedDepth;
+	Threads.main()->last_result.score = bestThread->rootMoves[0].score;
+	Threads.main()->last_result.pv_info = info;
+	Threads.main()->last_result.bestmove = bestThread->rootMoves[0].pv[0];
+
 	// 次回の探索のときに何らか使えるのでベストな指し手の評価値を保存しておく。
 	bestPreviousScore        = bestThread->rootMoves[0].score;
 	bestPreviousAverageScore = bestThread->rootMoves[0].averageScore;
@@ -721,6 +732,7 @@ SKIP_SEARCH:;
 			std::cout << " ponder " << bestThread->rootMoves[0].pv[1];
 
 		std::cout << sync_endl;
+
 	}
 }
 
@@ -1002,6 +1014,8 @@ void Thread::search()
 			{
 				// fail highするごとにdepthを下げていく処理
 				Depth adjustedDepth = std::max(1, rootDepth - failedHighCnt - searchAgainCounter);
+				//sync_cout << "rootDepth" << rootDepth << " alpha: " << alpha << " beta: " << beta << " adjustedDepth: " << adjustedDepth << " failedHighCnt: " << failedHighCnt << sync_endl;
+				//sync_cout << "rootPos.sfen(): " << rootPos.sfen() << sync_endl;
 				bestValue = ::search<Root>(rootPos, ss, alpha, beta, adjustedDepth, false);
 
 				// それぞれの指し手に対するスコアリングが終わったので並べ替えおく。
@@ -1508,6 +1522,7 @@ namespace {
 		// singular searchとIIDとのスレッド競合を考慮して、ttValue , ttMoveの順で取り出さないといけないらしい。
 		// cf. More robust interaction of singular search and iid : https://github.com/official-stockfish/Stockfish/commit/16b31bb249ccb9f4f625001f9772799d286e2f04
 
+		//std::cout << tte->value() << std::endl;
 		ttValue = ss->ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
 
 		// 置換表の指し手
@@ -3126,6 +3141,9 @@ namespace {
 
 				if (!PARAM_QSEARCH_FORCE_EVAL)
 				{
+
+					//std::cout << "check" << std::endl;
+					//std::cout << ((ss - 1)->currentMove != MOVE_NULL) << std::endl;
 					// Stockfish相当のコード
 					ss->staticEval = bestValue =
 						(ss - 1)->currentMove != MOVE_NULL ? evaluate(pos)
@@ -3142,6 +3160,8 @@ namespace {
 					// 残り探索深さが大きい時は、こっちに切り替えるのはありかも…。
 					// どちらが優れているかわからないので、optimizerに任せる。
 					ss->staticEval = bestValue = evaluate(pos);
+
+
 				}
 			}
 

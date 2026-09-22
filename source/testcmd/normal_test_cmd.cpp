@@ -237,7 +237,7 @@ namespace Test
 		if (token == "genmoves")         gen_moves(pos, is);       // 現在の局面に対して指し手生成のテストを行う。
 		else if (token == "autoplay")    auto_play(pos, is);       // 連続自己対局を行う。
 #if defined (EVAL_LEARN)
-		else if (token == "evalsave")    Eval::save_eval("");      // 現在の評価関数のパラメーターをファイルに保存
+		//else if (token == "evalsave")    Eval::save_eval("");      // 現在の評価関数のパラメーターをファイルに保存
 #endif
 		else return false;									       // どのコマンドも処理することがなかった
 			

@@ -956,9 +956,9 @@ namespace Eval
 		EvalLearningTools::init();
 
 		auto for_all_sq = [](std::function<void(Square)> func) {
-			for (int r = RANK_1; r <= RANK_9; ++r)
+			for (int r = RANK_1; r <= RANK_NB-1; ++r)
 			{
-				for (int f = FILE_1; f <= FILE_9; ++f)
+				for (int f = FILE_1; f <= FILE_NB-1; ++f)
 				{
 					auto sq = (File)f | (Rank)r;
 					func(sq);
