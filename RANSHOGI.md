@@ -5,8 +5,6 @@
 
 枝分かれ元: yaneurao/YaneuraOu の `599378d4`
 
-アプリ側のソースコードはこちらにあります: https://github.com/algorithms-inc/ranshogi_app
-
 ## ライセンス
 
 **GPLv3** です。元のやねうら王プロジェクト（Stockfish由来のコードを多く含みます）と同じ条件に従います。
@@ -66,3 +64,5 @@ gkp depth 12 verify_depth 16 nodes 500000 verify_nodes 5000000 score 1200 margin
 
 `gkp` は `kachikire sfen <sfen> score <評価値> player <b|w> pv <正解手順>` の形で出力します。
 `pv` は初期局面から実際に並べ直して、指せる手だけを出しています。
+
+このエンジンを使っているアプリのソースコードは https://github.com/algorithms-inc/ranshogi_app にあります。
