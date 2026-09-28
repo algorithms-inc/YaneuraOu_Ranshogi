@@ -1,3 +1,15 @@
+# 乱将棋版やねうら王
+
+このリポジトリは、6×6盤の将棋の変種「乱将棋」向けに改造した[やねうら王](https://github.com/yaneurao/YaneuraOu)です。
+スマートフォンアプリ「乱将棋」の思考エンジンとして使っています。GPLv3です。
+
+- 改造の内容とビルド方法: [RANSHOGI.md](RANSHOGI.md)
+- アプリ側のソースコード: https://github.com/algorithms-inc/ranshogi_app
+
+以下は、本家やねうら王のREADMEです。
+
+---
+
 ﻿[![Make CI (MSYS2 for Windows)](https://github.com/yaneurao/YaneuraOu/actions/workflows/make-msys2.yml/badge.svg?event=push)](https://github.com/yaneurao/YaneuraOu/actions/workflows/make-msys2.yml)
 [![Make CI (DeepLearning for Windows)](https://github.com/yaneurao/YaneuraOu/actions/workflows/make-deep-windows.yml/badge.svg?event=push)](https://github.com/yaneurao/YaneuraOu/actions/workflows/make-deep-windows.yml)
 [![Make CI (MinGW for Windows)](https://github.com/yaneurao/YaneuraOu/actions/workflows/make-mingw.yml/badge.svg?event=push)](https://github.com/yaneurao/YaneuraOu/actions/workflows/make-mingw.yml)
