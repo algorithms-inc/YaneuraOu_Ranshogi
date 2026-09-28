@@ -5,6 +5,8 @@
 
 枝分かれ元: yaneurao/YaneuraOu の `599378d4`
 
+アプリ側のソースコードはこちらにあります: https://github.com/algorithms-inc/ranshogi_app
+
 ## ライセンス
 
 **GPLv3** です。元のやねうら王プロジェクト（Stockfish由来のコードを多く含みます）と同じ条件に従います。
